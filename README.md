@@ -69,7 +69,9 @@ open docs/index.html
 
 数据保存在本机 localStorage，关掉再打开会接着上次的进度。无需任何依赖。
 
-**安卓 APK**：由 GitHub Actions 自动构建（见 `app/`），每次改动 `docs/index.html` 都会产出新包。下载路径：仓库 **Actions** → 最新一次 `Build Android APK` → 页面底部 **Artifacts** → `AIme-v0.2.0-debug-apk`。
+**安卓 APK（推荐试用方式）**：直接下载 [AIme-v0.2.0-debug.apk](https://github.com/egmis/AIme/releases/download/v0.2.0/AIme-v0.2.0-debug.apk) → 手机允许「未知来源」→ 安装。全屏无地址栏，数据存本机。
+
+APK 由 GitHub Actions 云端构建（见 `app/`），每次改动 `docs/index.html` 都会产出新包；`app/` 只是 Capacitor 外壳，前端源码始终只有 `docs/index.html` 一份。
 
 ---
 
