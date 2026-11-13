@@ -26,11 +26,15 @@
 
 ## 快速开始
 
+**在线原型**：https://egmis.github.io/AIme/ （无需安装任何东西）
+
+本地体验：
+
 ```bash
-git clone https://github.com/<your-org>/AIme.git
+git clone https://github.com/egmis/AIme.git
 cd AIme
 # 直接用浏览器打开可交互原型
-open prototype/index.html
+open docs/index.html
 ```
 
 原型包含三个可操作页面：**首页**（形象与进化进度）、**铸造**（八层画像与分级）、**对话**（时间轴切换 + 「不像我」纠偏）。无需任何依赖。
