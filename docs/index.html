@@ -1,735 +1,1195 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>AIme · 电子生命铸造</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#08080C">
+<title>AIme · 电子生命</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-:root{
-  --bg:#08080C; --surface:#12121A; --surface2:#1A1A25; --surface3:#22222F;
-  --line:rgba(255,255,255,.07); --line2:rgba(255,255,255,.12);
-  --text:#EEEEF4; --muted:#8B8B9C; --dim:#5E5E70;
-  --accent:#8E7CFF; --accent2:#4FD1C5; --gold:#E3BE85; --danger:#FF6B6B;
-}
-html,body{height:100%}
-body{
-  background:#050508; display:flex; align-items:center; justify-content:center;
-  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Microsoft YaHei",sans-serif;
-  color:var(--text); overflow:hidden;
-}
-.device{
-  position:relative; width:390px; height:844px; background:var(--bg);
-  border-radius:44px; overflow:hidden; display:flex; flex-direction:column;
-  box-shadow:0 0 0 10px #16161d, 0 0 0 11px #26262f, 0 40px 90px -20px rgba(0,0,0,.9);
-}
-@media (max-width:480px), (max-height:900px){
-  .device{width:100%;height:100%;border-radius:0;box-shadow:none}
-}
-
-/* ---------- 状态栏 ---------- */
-.statusbar{
-  height:46px; flex:0 0 46px; display:flex; align-items:flex-end; justify-content:space-between;
-  padding:0 26px 6px; font-size:13px; font-weight:500; letter-spacing:.4px; color:var(--text);
-  position:relative; z-index:30;
-}
-.statusbar .right{display:flex;align-items:center;gap:5px}
-.bar-i{display:flex;align-items:flex-end;gap:2px;height:9px}
-.bar-i i{width:3px;background:var(--text);border-radius:1px;display:block}
-.bar-i i:nth-child(1){height:3px}.bar-i i:nth-child(2){height:5px}
-.bar-i i:nth-child(3){height:7px}.bar-i i:nth-child(4){height:9px}
-.batt{width:20px;height:10px;border:.8px solid var(--text);border-radius:2.5px;position:relative}
-.batt::after{content:"";position:absolute;right:-3px;top:2.5px;width:2px;height:5px;background:var(--text);border-radius:0 1px 1px 0}
-.batt span{position:absolute;inset:1.2px;width:68%;background:var(--text);border-radius:1px;display:block}
-
-/* ---------- 视口 ---------- */
-.viewport{position:relative;flex:1;overflow:hidden}
-.screen{
-  position:absolute; inset:0; overflow-y:auto; overflow-x:hidden;
-  padding:4px 20px 108px; opacity:0; pointer-events:none;
-  transform:translateX(16px) scale(.99);
-  transition:opacity .32s ease, transform .38s cubic-bezier(.22,.61,.36,1);
-  -webkit-overflow-scrolling:touch;
-}
-.screen.active{opacity:1;pointer-events:auto;transform:none}
-.screen::-webkit-scrollbar{width:0}
-
-/* ---------- 头部 ---------- */
-.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 0 6px}
-.brand{display:flex;align-items:baseline;gap:7px}
-.brand b{font-size:19px;font-weight:600;letter-spacing:-.3px}
-.brand span{font-size:10px;color:var(--dim);letter-spacing:2px;text-transform:uppercase}
-.coin{
-  display:flex;align-items:center;gap:6px;padding:6px 11px;border-radius:999px;
-  background:rgba(227,190,133,.09);border:.5px solid rgba(227,190,133,.24);
-  font-size:12.5px;color:var(--gold);font-variant-numeric:tabular-nums;
-}
-.coin svg{width:12px;height:12px}
-
-/* ---------- 形象 ---------- */
-.hero{position:relative;display:flex;flex-direction:column;align-items:center;padding:18px 0 22px}
-.avatar-wrap{position:relative;width:168px;height:168px;display:grid;place-items:center}
-.ring-out{
-  position:absolute;inset:0;border-radius:50%;
-  background:conic-gradient(from -90deg,var(--accent) 0deg 158deg,rgba(255,255,255,.06) 158deg 360deg);
-  -webkit-mask:radial-gradient(circle,transparent 71%,#000 72%);
-  mask:radial-gradient(circle,transparent 71%,#000 72%);
-  animation:spin 18s linear infinite;
-}
-.ring-mid{position:absolute;inset:14px;border-radius:50%;border:.5px dashed rgba(255,255,255,.13)}
-.avatar{
-  width:120px;height:120px;border-radius:50%;position:relative;overflow:hidden;
-  background:
-    radial-gradient(circle at 50% 28%,#3B3560 0%,#201C38 45%,#0D0B16 100%);
-  box-shadow:inset 0 0 32px rgba(142,124,255,.32), 0 0 40px -6px rgba(142,124,255,.28);
-  display:grid;place-items:center;
-}
-.avatar::before{
-  content:"";position:absolute;width:60px;height:60px;border-radius:50%;
-  background:radial-gradient(circle at 38% 34%,#C9BEFF,#8E7CFF 48%,#4B3FA8 100%);
-  bottom:16px;opacity:.92;filter:blur(.2px);
-}
-.avatar::after{
-  content:"";position:absolute;width:82px;height:30px;border-radius:50%;
-  background:radial-gradient(circle,#B9AEFF,rgba(142,124,255,0) 72%);
-  bottom:4px;opacity:.5;filter:blur(3px);
-}
-@keyframes spin{to{transform:rotate(360deg)}}
-.hero h1{font-size:21px;font-weight:500;letter-spacing:.2px;margin-top:16px}
-.hero h1 em{font-style:normal;color:var(--dim);font-size:13px;margin-left:6px;letter-spacing:1px}
-.tagline{
-  margin-top:12px;font-size:13.5px;line-height:1.62;color:var(--muted);
-  text-align:center;max-width:290px;
-}
-.badge{
-  margin-top:14px;display:inline-flex;align-items:center;gap:6px;
-  padding:4px 12px;border-radius:999px;font-size:11.5px;letter-spacing:.5px;
-  background:rgba(142,124,255,.12);border:.5px solid rgba(142,124,255,.3);color:#B7AAFF;
-}
-.badge b{color:#fff;font-weight:500}
-
-/* ---------- 卡片 ---------- */
-.card{
-  background:var(--surface);border:.5px solid var(--line);border-radius:18px;
-  padding:18px;margin-bottom:12px;
-}
-.card-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
-.card-h h3{font-size:14px;font-weight:500;letter-spacing:.2px}
-.card-h .meta{font-size:11.5px;color:var(--dim)}
-.big-num{font-size:30px;font-weight:300;letter-spacing:-1px;font-variant-numeric:tabular-nums}
-.big-num s{text-decoration:none;font-size:14px;color:var(--dim);margin-left:3px;font-weight:400}
-
-.bars{display:flex;flex-direction:column;gap:11px;margin-top:4px}
-.bar-row{display:flex;align-items:center;gap:10px;font-size:12px}
-.bar-row .n{width:76px;color:var(--muted);flex:0 0 auto}
-.bar-row .track{flex:1;height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden}
-.bar-row .track i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,#6B5EE0,#8E7CFF)}
-.bar-row .v{width:30px;text-align:right;color:var(--dim);font-variant-numeric:tabular-nums}
-
-.hint{
-  margin-top:14px;padding-top:13px;border-top:.5px solid var(--line);
-  font-size:12px;color:var(--dim);line-height:1.55;
-}
-.hint b{color:var(--accent2);font-weight:400}
-
-/* ---------- 时间轴 ---------- */
-.tl-list{display:flex;flex-direction:column;gap:9px}
-.tl{
-  display:flex;align-items:center;gap:13px;padding:13px 14px;border-radius:14px;
-  background:var(--surface2);border:.5px solid transparent;cursor:pointer;
-  transition:.2s;
-}
-.tl:active{transform:scale(.985);border-color:rgba(142,124,255,.4)}
-.tl .arrow{
-  width:30px;height:30px;flex:0 0 30px;border-radius:50%;display:grid;place-items:center;
-  background:rgba(142,124,255,.13);color:#B7AAFF;font-size:13px;
-}
-.tl.future .arrow{background:rgba(79,209,197,.13);color:var(--accent2)}
-.tl .body{flex:1;min-width:0}
-.tl .body strong{display:block;font-size:13.5px;font-weight:500;margin-bottom:3px}
-.tl .body span{font-size:11.5px;color:var(--dim);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tl .yr{font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums}
-
-.cta{
-  width:100%;height:50px;border:none;border-radius:15px;font-size:14.5px;font-weight:500;
-  color:#0A0812;background:linear-gradient(135deg,#B3A4FF,#8E7CFF 55%,#7B6BEF);
-  cursor:pointer;letter-spacing:.5px;margin-top:4px;
-  box-shadow:0 10px 28px -10px rgba(142,124,255,.65);
-  transition:.18s;
-}
-.cta:active{transform:scale(.98);box-shadow:0 6px 18px -8px rgba(142,124,255,.6)}
-.cta.ghost{
-  background:transparent;border:.5px solid var(--line2);color:var(--muted);
-  box-shadow:none;height:44px;font-size:13px;
-}
-
-/* ---------- 铸造页 ---------- */
-.forge-head{display:flex;align-items:center;gap:16px;padding:16px 0 20px}
-.ring-prog{position:relative;width:82px;height:82px;flex:0 0 82px;display:grid;place-items:center}
-.ring-prog .c{
-  position:absolute;inset:0;border-radius:50%;
-  background:conic-gradient(from -90deg,var(--accent2) 0deg 223deg,rgba(255,255,255,.07) 223deg 360deg);
-  -webkit-mask:radial-gradient(circle,transparent 76%,#000 77%);
-  mask:radial-gradient(circle,transparent 76%,#000 77%);
-}
-.ring-prog b{font-size:19px;font-weight:400;font-variant-numeric:tabular-nums}
-.ring-prog b s{text-decoration:none;font-size:10px;color:var(--dim)}
-.forge-head .txt h2{font-size:16px;font-weight:500;margin-bottom:6px}
-.forge-head .txt p{font-size:12px;color:var(--dim);line-height:1.6}
-
-.layers{display:flex;flex-direction:column;gap:2px;margin-top:2px}
-.layer{
-  display:flex;align-items:center;gap:12px;padding:12px 4px;cursor:pointer;
-  border-bottom:.5px solid rgba(255,255,255,.045);transition:.18s;
-}
-.layer:active{background:rgba(255,255,255,.025)}
-.layer .idx{
-  width:22px;font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums;flex:0 0 22px;
-}
-.layer .info{flex:1;min-width:0}
-.layer .info strong{font-size:13.5px;font-weight:400;display:block;margin-bottom:7px}
-.layer .info .track{height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden}
-.layer .info .track i{display:block;height:100%;border-radius:2px;background:var(--accent);transition:width .7s cubic-bezier(.22,.61,.36,1)}
-.layer.low .info .track i{background:#4A4460}
-.layer .pct{font-size:11.5px;color:var(--dim);width:34px;text-align:right;font-variant-numeric:tabular-nums}
-.layer .chev{color:var(--dim);font-size:14px;margin-left:2px}
-
-.steps{display:flex;gap:6px;margin-top:2px}
-.step{
-  flex:1;height:52px;border-radius:11px;background:var(--surface3);border:.5px solid transparent;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
-  font-size:9.5px;color:var(--dim);cursor:pointer;transition:.18s;
-}
-.step b{font-size:11px;font-weight:500;color:var(--muted)}
-.step.done{background:rgba(142,124,255,.13);border-color:rgba(142,124,255,.28)}
-.step.done b,.step.done{color:#B7AAFF}
-.step.cur{border-color:rgba(79,209,197,.5);background:rgba(79,209,197,.1)}
-.step.cur b{color:var(--accent2)}
-.step:active{transform:scale(.95)}
-
-/* ---------- 对话页 ---------- */
-.chat-top{
-  position:sticky;top:0;z-index:12;background:linear-gradient(var(--bg) 72%,rgba(8,8,12,0));
-  padding:14px 0 10px;margin:0 -20px;padding-left:20px;padding-right:20px;
-}
-.eras{display:flex;gap:7px}
-.era{
-  flex:1;height:34px;border-radius:10px;border:.5px solid var(--line);background:transparent;
-  color:var(--muted);font-size:12px;cursor:pointer;transition:.2s;letter-spacing:.3px;
-  font-family:inherit;
-}
-.era.on{background:rgba(142,124,255,.14);border-color:rgba(142,124,255,.4);color:#C5BAFF}
-.era:active{transform:scale(.97)}
-.ctx{
-  margin-top:10px;font-size:11.5px;color:var(--accent2);
-  display:flex;align-items:center;gap:6px;min-height:16px;
-}
-.ctx .dot{width:4px;height:4px;border-radius:50%;background:var(--accent2);flex:0 0 4px}
-.ctx.idle{color:var(--dim)}
-
-.msgs{display:flex;flex-direction:column;gap:18px;padding:16px 0 8px}
-.msg{display:flex;gap:10px;max-width:100%}
-.msg .av{
-  width:28px;height:28px;flex:0 0 28px;border-radius:50%;margin-top:2px;
-  background:radial-gradient(circle at 40% 35%,#C9BEFF,#6B5EE0 55%,#2A2340);
-  box-shadow:0 0 14px -2px rgba(142,124,255,.5);
-}
-.msg .stack{flex:1;min-width:0}
-.bubble{
-  display:inline-block;max-width:100%;padding:11px 14px;border-radius:4px 15px 15px 15px;
-  background:var(--surface2);font-size:13.5px;line-height:1.66;color:#DEDEE8;
-}
-.msg.me{justify-content:flex-end}
-.msg.me .bubble{
-  background:linear-gradient(135deg,#6F60E8,#8E7CFF);color:#0C0A16;border-radius:15px 4px 15px 15px;
-  font-weight:400;
-}
-.acts{display:flex;gap:14px;margin-top:8px;padding-left:2px}
-.act{
-  background:none;border:none;font-size:11px;color:var(--dim);cursor:pointer;
-  font-family:inherit;padding:2px 0;transition:.18s;display:flex;align-items:center;gap:4px;
-}
-.act:active{color:var(--accent2)}
-.act.done{color:var(--accent2)}
-.sys{
-  align-self:center;font-size:11px;color:var(--dim);padding:5px 12px;border-radius:999px;
-  background:rgba(255,255,255,.04);letter-spacing:.3px;
-}
-.typing{display:flex;gap:4px;padding:13px 15px}
-.typing i{width:5px;height:5px;border-radius:50%;background:var(--dim);animation:blink 1.2s infinite}
-.typing i:nth-child(2){animation-delay:.18s}
-.typing i:nth-child(3){animation-delay:.36s}
-@keyframes blink{0%,60%,100%{opacity:.25}30%{opacity:1}}
-
-.composer{
-  position:absolute;left:0;right:0;bottom:0;z-index:14;
-  padding:10px 16px 14px;background:linear-gradient(rgba(8,8,12,0),var(--bg) 26%);
-  display:flex;gap:9px;align-items:center;
-}
-.composer .inp{
-  flex:1;height:42px;border-radius:21px;background:var(--surface2);border:.5px solid var(--line);
-  color:var(--text);font-size:13px;padding:0 16px;font-family:inherit;outline:none;
-}
-.composer .inp::placeholder{color:var(--dim)}
-.composer .inp:focus{border-color:rgba(142,124,255,.45)}
-.send{
-  width:42px;height:42px;flex:0 0 42px;border-radius:50%;border:none;cursor:pointer;
-  background:linear-gradient(135deg,#B3A4FF,#7B6BEF);display:grid;place-items:center;
-  transition:.18s;
-}
-.send:active{transform:scale(.92)}
-.send svg{width:16px;height:16px}
-
-/* ---------- 底部导航 ---------- */
-.tabbar{
-  position:absolute;left:0;right:0;bottom:0;height:76px;z-index:20;
-  display:flex;align-items:flex-start;padding-top:9px;
-  background:rgba(10,10,15,.86);backdrop-filter:blur(22px);
-  border-top:.5px solid var(--line);
-}
-.tab{
-  flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;
-  background:none;border:none;cursor:pointer;color:var(--dim);font-family:inherit;
-  font-size:10px;transition:.2s;padding:0;
-}
-.tab svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
-.tab.on{color:#B7AAFF}
-.tab:active{transform:scale(.94)}
-
-/* ---------- 弹层 ---------- */
-.mask{
-  position:absolute;inset:0;background:rgba(0,0,0,.6);z-index:40;opacity:0;pointer-events:none;
-  transition:.3s;backdrop-filter:blur(2px);
-}
-.mask.on{opacity:1;pointer-events:auto}
-.sheet{
-  position:absolute;left:0;right:0;bottom:0;z-index:50;background:var(--surface);
-  border-radius:24px 24px 0 0;border-top:.5px solid var(--line2);
-  padding:10px 22px 30px;transform:translateY(102%);transition:transform .38s cubic-bezier(.22,.61,.36,1);
-  max-height:74%;overflow-y:auto;
-}
-.sheet.on{transform:none}
-.grab{width:36px;height:4px;border-radius:2px;background:var(--surface3);margin:0 auto 18px}
-.sheet h3{font-size:16px;font-weight:500;margin-bottom:6px}
-.sheet .sub{font-size:12px;color:var(--dim);line-height:1.6;margin-bottom:18px}
-.kv{display:flex;justify-content:space-between;padding:12px 0;border-bottom:.5px solid rgba(255,255,255,.05);font-size:12.5px}
-.kv span{color:var(--dim)}
-.kv b{font-weight:400;color:#D8D8E4;text-align:right;max-width:62%}
-
-.toast{
-  position:absolute;left:50%;bottom:118px;transform:translate(-50%,14px);z-index:60;
-  background:rgba(28,28,38,.96);border:.5px solid var(--line2);color:#E4E4EE;
-  font-size:12.5px;padding:10px 17px;border-radius:12px;opacity:0;pointer-events:none;
-  transition:.28s;white-space:nowrap;max-width:88%;overflow:hidden;text-overflow:ellipsis;
-}
-.toast.on{opacity:1;transform:translate(-50%,0)}
+  :root{
+    --bg:#08080C; --bg2:#0C0D13; --card:#12141C; --card2:#171A24;
+    --line:rgba(255,255,255,.075); --line2:rgba(255,255,255,.14);
+    --txt:#EDEEF3; --dim:#8B8F9E; --dim2:#5E6272;
+    --acc:#8B7CFF; --acc2:#3FE0C0; --warm:#FFB86B; --danger:#FF6B7A;
+    --r:16px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;overflow:hidden;background:#050508}
+  body{
+    background:var(--bg); color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    font-size:15px; line-height:1.6; letter-spacing:.01em;
+    -webkit-font-smoothing:antialiased;
+  }
+  #app{height:100%;display:flex;flex-direction:column;position:relative;max-width:520px;margin:0 auto;background:var(--bg)}
+  @media (min-width:560px){
+    #app{box-shadow:0 0 0 1px rgba(255,255,255,.06),0 30px 80px -30px rgba(0,0,0,.9)}
+  }
+  /* 顶部 */
+  #topbar{
+    padding:calc(env(safe-area-inset-top) + 14px) 18px 10px;
+    display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+    background:linear-gradient(180deg,rgba(8,8,12,.98),rgba(8,8,12,.72) 70%,transparent);
+    position:relative;z-index:5;flex:0 0 auto;
+  }
+  .brand{font-size:19px;font-weight:650;letter-spacing:.02em}
+  .brand small{display:block;font-size:11.5px;color:var(--dim2);font-weight:400;letter-spacing:.06em;margin-top:2px}
+  .coin-pill{
+    display:flex;align-items:center;gap:6px;
+    padding:7px 12px;border-radius:999px;
+    background:rgba(255,184,107,.1);border:1px solid rgba(255,184,107,.26);
+    color:var(--warm);font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;
+    cursor:pointer;flex:0 0 auto;transition:transform .15s;
+  }
+  .coin-pill:active{transform:scale(.95)}
+  .coin-dot{width:13px;height:13px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#FFE0B0,#FFB86B 60%,#C97F2E);box-shadow:0 0 8px rgba(255,184,107,.5)}
+  /* 主体 */
+  main{flex:1 1 auto;overflow-y:auto;overflow-x:hidden;padding:0 16px 24px;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column}
+  main::-webkit-scrollbar{width:0}
+  .screen{animation:fade .26s ease both;display:flex;flex-direction:column;min-height:100%}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  /* 卡片 */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:12px}
+  .card.tight{padding:13px 14px}
+  .k{font-size:11px;letter-spacing:.14em;color:var(--dim2);text-transform:uppercase;margin-bottom:8px;font-weight:600}
+  .h2{font-size:17px;font-weight:640;margin:20px 2px 10px;display:flex;align-items:center;justify-content:space-between}
+  .h2 em{font-style:normal;font-size:12px;color:var(--dim2);font-weight:400}
+  .sub{font-size:12.5px;color:var(--dim);line-height:1.55}
+  .row{display:flex;align-items:center;gap:12px}
+  .between{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .grow{flex:1 1 auto;min-width:0}
+  .tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,.06);color:var(--dim);border:1px solid var(--line)}
+  .tag.acc{background:rgba(139,124,255,.14);color:#B9AEFF;border-color:rgba(139,124,255,.3)}
+  .tag.mint{background:rgba(63,224,192,.12);color:#77EBD3;border-color:rgba(63,224,192,.28)}
+  .tag.warm{background:rgba(255,184,107,.12);color:#FFCE97;border-color:rgba(255,184,107,.28)}
+  .tag.lock{background:rgba(255,255,255,.03);color:var(--dim2);border-color:var(--line)}
+  /* 主视觉 */
+  .hero{position:relative;overflow:hidden;border-radius:20px;padding:20px;background:
+      radial-gradient(120% 90% at 15% 0%,rgba(139,124,255,.22),transparent 60%),
+      radial-gradient(90% 80% at 95% 100%,rgba(63,224,192,.14),transparent 60%),
+      var(--card);border:1px solid var(--line);margin-bottom:12px}
+  .orb{position:relative;width:132px;height:132px;margin:2px auto 16px;display:grid;place-items:center}
+  .orb svg{position:absolute;inset:0;transform:rotate(-90deg)}
+  .ring-bg{fill:none;stroke:rgba(255,255,255,.07);stroke-width:3}
+  .ring-fg{fill:none;stroke:url(#g1);stroke-width:3;stroke-linecap:round;transition:stroke-dashoffset 1s cubic-bezier(.2,.7,.2,1)}
+  .core{width:74px;height:74px;border-radius:50%;background:
+      radial-gradient(circle at 38% 32%,rgba(255,255,255,.94),rgba(196,186,255,.55) 26%,rgba(106,88,255,.35) 55%,rgba(20,18,40,.9) 78%);
+      box-shadow:0 0 34px rgba(139,124,255,.45),inset 0 0 22px rgba(255,255,255,.28);
+      animation:breathe 4.6s ease-in-out infinite}
+  @keyframes breathe{
+    0%,100%{transform:scale(1);box-shadow:0 0 30px rgba(139,124,255,.4),inset 0 0 20px rgba(255,255,255,.24)}
+    50%{transform:scale(1.055);box-shadow:0 0 46px rgba(139,124,255,.62),inset 0 0 26px rgba(255,255,255,.34)}
+  }
+  .orb-num{text-align:center;font-size:31px;font-weight:680;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .orb-num span{font-size:14px;color:var(--dim2);font-weight:400;margin-left:2px}
+  .orb-cap{text-align:center;font-size:12px;color:var(--dim2);letter-spacing:.1em;margin-top:2px}
+  .stat3{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border-radius:12px;overflow:hidden;margin-top:16px}
+  .stat3 div{background:rgba(11,12,17,.86);padding:10px 6px;text-align:center}
+  .stat3 b{display:block;font-size:16px;font-weight:640;font-variant-numeric:tabular-nums}
+  .stat3 i{font-style:normal;font-size:10.5px;color:var(--dim2);letter-spacing:.05em}
+  /* 进度条 */
+  .bar{height:5px;border-radius:99px;background:rgba(255,255,255,.07);overflow:hidden}
+  .bar>i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--acc),var(--acc2));transition:width .5s cubic-bezier(.2,.7,.2,1)}
+  /* 层列表 */
+  .layer{border-bottom:1px solid var(--line)}
+  .layer:last-child{border-bottom:0}
+  .layer-head{display:flex;align-items:center;gap:12px;padding:13px 0;cursor:pointer}
+  .layer-idx{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;font-size:12px;font-weight:650;
+    background:rgba(139,124,255,.12);color:#B9AEFF;border:1px solid rgba(139,124,255,.22);flex:0 0 auto}
+  .layer-idx.done{background:rgba(63,224,192,.14);color:#77EBD3;border-color:rgba(63,224,192,.3)}
+  .layer-body{padding:0 0 15px}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}
+  .chip{font-size:12.5px;padding:6px 11px;border-radius:9px;background:rgba(255,255,255,.04);
+    border:1px solid var(--line);color:var(--dim);cursor:pointer;transition:.16s;user-select:none}
+  .chip:active{transform:scale(.96)}
+  .chip.on{background:rgba(63,224,192,.13);border-color:rgba(63,224,192,.34);color:#8DEFD9}
+  .chip.locked{opacity:.42}
+  .chip small{opacity:.6;margin-left:3px}
+  /* 阶梯 */
+  .step{display:flex;gap:12px;padding:12px 0;border-bottom:1px dashed var(--line);cursor:pointer}
+  .step:last-child{border-bottom:0}
+  .step-dot{width:9px;height:9px;border-radius:50%;background:var(--dim2);margin-top:7px;flex:0 0 auto}
+  .step.on .step-dot{background:var(--acc2);box-shadow:0 0 10px rgba(63,224,192,.7)}
+  .step.lock .step-dot{background:transparent;border:1px solid var(--dim2)}
+  .step.now .step-dot{background:var(--acc);box-shadow:0 0 10px rgba(139,124,255,.8)}
+  .step b{font-size:14px;font-weight:600;display:block}
+  .step p{margin:3px 0 0;font-size:12px;color:var(--dim2);line-height:1.5}
+  .step.on b{color:#8DEFD9}
+  .step.lock b,.step.lock p{color:var(--dim2)}
+  /* 对话 */
+  .tl{display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none;flex:0 0 auto}
+  .tl::-webkit-scrollbar{display:none}
+  .tl button{
+    flex:0 0 auto;padding:8px 14px;border-radius:999px;font-size:12.5px;cursor:pointer;
+    background:rgba(255,255,255,.045);border:1px solid var(--line);color:var(--dim);font-family:inherit;transition:.18s
+  }
+  .tl button.on{background:rgba(139,124,255,.16);border-color:rgba(139,124,255,.45);color:#C3BAFF;font-weight:600}
+  #stream{flex:1 1 auto;overflow-y:auto;padding-bottom:10px;min-height:0}
+  #stream::-webkit-scrollbar{width:0}
+  .msg{margin-bottom:14px;animation:pop .3s cubic-bezier(.2,.8,.2,1) both}
+  @keyframes pop{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}
+  .msg .who{font-size:10.5px;color:var(--dim2);letter-spacing:.08em;margin-bottom:5px}
+  .bubble{max-width:86%;padding:11px 14px;border-radius:15px;font-size:14.5px;line-height:1.62;white-space:pre-wrap;word-break:break-word}
+  .me{display:flex;flex-direction:column;align-items:flex-end}
+  .me .bubble{background:linear-gradient(135deg,rgba(139,124,255,.92),rgba(105,90,230,.88));color:#fff;border-bottom-right-radius:5px}
+  .aime .bubble{background:var(--card2);border:1px solid var(--line);border-bottom-left-radius:5px;display:inline-block}
+  .acts{display:flex;gap:8px;margin-top:6px;padding-left:2px;align-items:center}
+  .act{font-size:11.5px;padding:4px 10px;border-radius:8px;background:transparent;border:1px solid var(--line);
+    color:var(--dim2);cursor:pointer;font-family:inherit;transition:.16s}
+  .act:active{transform:scale(.95)}
+  .act.done{color:#77EBD3;border-color:rgba(63,224,192,.3);background:rgba(63,224,192,.08)}
+  .typing{display:flex;gap:4px;padding:13px 15px;background:var(--card2);border:1px solid var(--line);border-radius:15px;width:min-content;border-bottom-left-radius:5px}
+  .typing i{width:5px;height:5px;border-radius:50%;background:var(--dim);animation:blink 1.3s infinite}
+  .typing i:nth-child(2){animation-delay:.18s}
+  .typing i:nth-child(3){animation-delay:.36s}
+  @keyframes blink{0%,60%,100%{opacity:.25;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
+  .composer{flex:0 0 auto;display:flex;gap:9px;padding:10px 0 4px;border-top:1px solid var(--line);background:var(--bg)}
+  .composer input{
+    flex:1 1 auto;background:var(--card2);border:1px solid var(--line);border-radius:12px;
+    padding:11px 14px;color:var(--txt);font-size:14.5px;font-family:inherit;outline:none;min-width:0
+  }
+  .composer input:focus{border-color:rgba(139,124,255,.5)}
+  .composer button{
+    flex:0 0 auto;padding:0 17px;border-radius:12px;border:0;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;
+    background:linear-gradient(135deg,#8B7CFF,#6A58F0);color:#fff;transition:.16s
+  }
+  .composer button:active{transform:scale(.95)}
+  /* 虚拟世界 */
+  .world{position:relative;border-radius:14px;padding:14px;margin-bottom:10px;
+    background:var(--card2);border:1px solid var(--line);cursor:pointer;overflow:hidden}
+  .world h4{margin:0 0 4px;font-size:14.5px;font-weight:620;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .world .laws{font-size:11.5px;color:var(--dim2);margin-top:7px;display:flex;flex-wrap:wrap;gap:5px}
+  .world .glow{position:absolute;right:-30px;top:-30px;width:100px;height:100px;border-radius:50%;
+    background:radial-gradient(circle,rgba(139,124,255,.26),transparent 68%);pointer-events:none}
+  .labor{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--line)}
+  .labor:last-child{border-bottom:0}
+  .labor-ico{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-size:15px;
+    background:rgba(255,184,107,.1);border:1px solid rgba(255,184,107,.2);flex:0 0 auto}
+  .btn-s{flex:0 0 auto;padding:7px 13px;border-radius:9px;border:1px solid rgba(63,224,192,.34);
+    background:rgba(63,224,192,.12);color:#8DEFD9;font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer;transition:.16s}
+  .btn-s:active{transform:scale(.95)}
+  .btn-s:disabled{opacity:.45;border-color:var(--line);background:rgba(255,255,255,.03);color:var(--dim2)}
+  .btn-p{width:100%;padding:13px;border-radius:12px;border:0;font-size:14.5px;font-weight:620;font-family:inherit;cursor:pointer;
+    background:linear-gradient(135deg,#8B7CFF,#6A58F0);color:#fff;margin-top:4px;transition:.16s}
+  .btn-p:active{transform:scale(.985)}
+  .btn-g{width:100%;padding:12px;border-radius:12px;font-size:14px;font-family:inherit;cursor:pointer;
+    background:rgba(255,255,255,.04);border:1px solid var(--line);color:var(--dim);transition:.16s}
+  .btn-g:active{transform:scale(.985)}
+  /* 论坛 */
+  .topic{display:flex;gap:11px;padding:12px 0;border-bottom:1px solid var(--line);cursor:pointer}
+  .topic:last-child{border-bottom:0}
+  .topic .n{width:20px;font-size:12px;color:var(--dim2);font-variant-numeric:tabular-nums;flex:0 0 auto;padding-top:2px}
+  .topic b{font-size:13.5px;font-weight:600;display:block;line-height:1.45}
+  .topic p{margin:3px 0 0;font-size:11.5px;color:var(--dim2)}
+  /* 我的 */
+  .list-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 0;border-bottom:1px solid var(--line);cursor:pointer}
+  .list-row:last-child{border-bottom:0}
+  .list-row .lbl{font-size:14px}
+  .list-row .val{font-size:12.5px;color:var(--dim2);display:flex;align-items:center;gap:6px;flex:0 0 auto}
+  .sw{width:42px;height:24px;border-radius:99px;background:rgba(255,255,255,.1);position:relative;transition:.22s;flex:0 0 auto}
+  .sw::after{content:"";position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;top:3px;left:3px;transition:.22s}
+  .sw.on{background:linear-gradient(135deg,#8B7CFF,#6A58F0)}
+  .sw.on::after{left:21px}
+  /* 底部导航 */
+  #tabs{
+    flex:0 0 auto;display:grid;grid-template-columns:repeat(5,1fr);
+    padding:8px 6px calc(env(safe-area-inset-bottom) + 8px);
+    background:rgba(10,11,16,.94);backdrop-filter:blur(22px);border-top:1px solid var(--line);z-index:10
+  }
+  #tabs button{
+    display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 0;border:0;background:transparent;
+    color:var(--dim2);font-size:10.5px;font-family:inherit;cursor:pointer;transition:.18s;letter-spacing:.02em
+  }
+  #tabs button svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+  #tabs button.on{color:#B9AEFF}
+  #tabs button.on svg{filter:drop-shadow(0 0 7px rgba(139,124,255,.6))}
+  /* 弹层 */
+  .sheet-wrap{position:fixed;inset:0;z-index:50;display:none;max-width:520px;margin:0 auto}
+  .sheet-wrap.open{display:block}
+  .mask{position:absolute;inset:0;background:rgba(0,0,0,.62);backdrop-filter:blur(3px);animation:fade .2s both}
+  .sheet{position:absolute;left:0;right:0;bottom:0;max-height:86%;overflow-y:auto;
+    background:var(--bg2);border-radius:22px 22px 0 0;border-top:1px solid var(--line2);
+    padding:8px 18px calc(env(safe-area-inset-bottom) + 22px);animation:up .3s cubic-bezier(.2,.8,.2,1) both}
+  .sheet::-webkit-scrollbar{width:0}
+  @keyframes up{from{transform:translateY(100%)}to{transform:none}}
+  .grab{width:36px;height:4px;border-radius:99px;background:rgba(255,255,255,.18);margin:6px auto 16px}
+  .sheet h3{margin:0 0 6px;font-size:18px;font-weight:650;padding-right:34px}
+  .sheet .close{position:absolute;right:16px;top:14px;width:28px;height:28px;border-radius:50%;
+    background:rgba(255,255,255,.07);border:0;color:var(--dim);font-size:14px;cursor:pointer;font-family:inherit}
+  #toast{position:fixed;left:50%;bottom:96px;transform:translate(-50%,14px);z-index:99;
+    background:rgba(28,30,40,.97);border:1px solid var(--line2);border-radius:11px;
+    padding:10px 16px;font-size:13px;max-width:86%;text-align:center;opacity:0;pointer-events:none;transition:.26s}
+  #toast.show{opacity:1;transform:translate(-50%,0)}
+  textarea{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px;
+    color:var(--txt);font-size:14px;font-family:inherit;outline:none;resize:none;min-height:88px;margin-top:10px}
+  textarea:focus{border-color:rgba(139,124,255,.5)}
+  .mono{font-variant-numeric:tabular-nums}
 </style>
 </head>
 <body>
-<div class="device">
-  <div class="statusbar">
-    <span id="clock">16:39</span>
-    <div class="right">
-      <div class="bar-i"><i></i><i></i><i></i><i></i></div>
-      <svg width="15" height="11" viewBox="0 0 15 11" fill="none"><path d="M1 8.4 3.7 5.7M5.6 5.7a1 1 0 0 1 1.4 0" stroke="#EEE" stroke-width="1" stroke-linecap="round"/><path d="M7 3.1a5 5 0 0 1 6 0" stroke="#EEE" stroke-width="1" stroke-linecap="round" fill="none"/><circle cx="7.4" cy="8.9" r="1" fill="#EEE"/></svg>
-      <div class="batt"><span></span></div>
-    </div>
-  </div>
-
-  <div class="viewport">
-
-    <!-- ============ 首页 ============ -->
-    <section class="screen active" id="home">
-      <div class="topbar">
-        <div class="brand"><b>AIme</b><span>Mecopy</span></div>
-        <div class="coin">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg>
-          <span id="coin-num">1,280</span>
-        </div>
-      </div>
-
-      <div class="hero">
-        <div class="avatar-wrap">
-          <div class="ring-out"></div>
-          <div class="ring-mid"></div>
-          <div class="avatar"></div>
-        </div>
-        <h1>卿意<em>L3 · 第 147 天</em></h1>
-        <div class="badge">画像完成度 <b>62%</b> · 下一级还差 38%</div>
-        <p class="tagline">今天你的注意力有点散，<br>像 2019 年那阵子。</p>
-      </div>
-
-      <div class="card">
-        <div class="card-h">
-          <h3>进化进度</h3>
-          <span class="meta">近 7 天 +4.2%</span>
-        </div>
-        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px">
-          <div class="big-num">62.4<s>%</s></div>
-          <span style="font-size:11.5px;color:var(--accent2)">↑ 0.6</span>
-        </div>
-        <div class="bars">
-          <div class="bar-row"><span class="n">形象</span><span class="track"><i style="width:60%"></i></span><span class="v">60%</span></div>
-          <div class="bar-row"><span class="n">性格</span><span class="track"><i style="width:80%"></i></span><span class="v">80%</span></div>
-          <div class="bar-row"><span class="n">反思叙事</span><span class="track"><i style="width:25%"></i></span><span class="v">25%</span></div>
-        </div>
-        <p class="hint">补充 <b>「反思与叙事」</b> 最快 —— 3 次深度对话即可增加 9%</p>
-      </div>
-
-      <div class="card">
-        <div class="card-h"><h3>时间轴</h3><span class="meta">可逆 · 可加速</span></div>
-        <div class="tl-list">
-          <div class="tl past" data-era="past">
-            <div class="arrow">←</div>
-            <div class="body">
-              <strong>与 20 岁的我对话</strong>
-              <span>2011 · 刚辞职，还不知道要去哪</span>
-            </div>
-            <div class="yr">2011</div>
-          </div>
-          <div class="tl future" data-era="future">
-            <div class="arrow">→</div>
-            <div class="body">
-              <strong>与 70 岁的我对话</strong>
-              <span>2069 · 想问那时候的自己后不后悔</span>
-            </div>
-            <div class="yr">2069</div>
-          </div>
-        </div>
-      </div>
-
-      <button class="cta" data-go="chat">和 AIme 聊聊</button>
-    </section>
-
-    <!-- ============ 铸造 ============ -->
-    <section class="screen" id="forge">
-      <div class="topbar">
-        <div class="brand"><b>铸造</b><span>Forge</span></div>
-        <div class="coin">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg>
-          <span>1,280</span>
-        </div>
-      </div>
-
-      <div class="forge-head">
-        <div class="ring-prog"><div class="c"></div><b>62<s>%</s></b></div>
-        <div class="txt">
-          <h2>八层电子画像</h2>
-          <p>每一层独立记分，可随时改写。<br>测试、体检、历史对话自动累加。</p>
-        </div>
-      </div>
-
-      <div class="layers" id="layers">
-        <div class="layer" data-layer="0"><span class="idx">01</span><div class="info"><strong>形象</strong><div class="track"><i style="width:60%"></i></div></div><span class="pct">60%</span><span class="chev">›</span></div>
-        <div class="layer" data-layer="1"><span class="idx">02</span><div class="info"><strong>声音与语言</strong><div class="track"><i style="width:45%"></i></div></div><span class="pct">45%</span><span class="chev">›</span></div>
-        <div class="layer" data-layer="2"><span class="idx">03</span><div class="info"><strong>性格与气质</strong><div class="track"><i style="width:80%"></i></div></div><span class="pct">80%</span><span class="chev">›</span></div>
-        <div class="layer" data-layer="3"><span class="idx">04</span><div class="info"><strong>体格与身体记忆</strong><div class="track"><i style="width:30%"></i></div></div><span class="pct">30%</span><span class="chev">›</span></div>
-        <div class="layer" data-layer="4"><span class="idx">05</span><div class="info"><strong>认知与智商</strong><div class="track"><i style="width:70%"></i></div></div><span class="pct">70%</span><span class="chev">›</span></div>
-        <div class="layer" data-layer="5"><span class="idx">06</span><div class="info"><strong>价值与意义</strong><div class="track"><i style="width:55%"></i></div></div><span class="pct">55%</span><span class="chev">›</span></div>
-        <div class="layer" data-layer="6"><span class="idx">07</span><div class="info"><strong>经历与角色</strong><div class="track"><i style="width:65%"></i></div></div><span class="pct">65%</span><span class="chev">›</span></div>
-        <div class="layer low" data-layer="7"><span class="idx">08</span><div class="info"><strong>反思与叙事</strong><div class="track"><i style="width:25%"></i></div></div><span class="pct">25%</span><span class="chev">›</span></div>
-      </div>
-
-      <div class="card" style="margin-top:18px">
-        <div class="card-h"><h3>形象分级</h3><span class="meta">当前 L1.2</span></div>
-        <div class="steps">
-          <div class="step done" data-step="1.1"><b>1.1</b>2D面部</div>
-          <div class="step cur" data-step="1.2"><b>1.2</b>2D全身</div>
-          <div class="step" data-step="1.3"><b>1.3</b>头部扫描</div>
-          <div class="step" data-step="1.5"><b>1.5</b>3D头部</div>
-          <div class="step" data-step="1.7"><b>1.7</b>3D+CT</div>
-        </div>
-        <p class="hint">L1.3 需要 <b>30 分钟头部扫描</b>，采集后 2 个工作日出模</p>
-      </div>
-
-      <button class="cta" id="continue">继续采集 · 反思与叙事</button>
-      <button class="cta ghost" style="margin-top:9px" data-go="home">返回首页</button>
-    </section>
-
-    <!-- ============ 对话 ============ -->
-    <section class="screen" id="chat">
-      <div class="chat-top">
-        <div class="eras">
-          <button class="era" data-era="past">20 岁</button>
-          <button class="era on" data-era="now">现在</button>
-          <button class="era" data-era="future">70 岁</button>
-        </div>
-        <div class="ctx idle" id="ctx"><span class="dot"></span><span id="ctx-txt">正在与此刻的你对话</span></div>
-      </div>
-
-      <div class="msgs" id="msgs">
-        <div class="msg">
-          <div class="av"></div>
-          <div class="stack">
-            <div class="bubble">你今天第三次打开这个页面了。是在等一个决定吗？</div>
-            <div class="acts"><button class="act unlike">不像我</button><button class="act">记下来</button></div>
-          </div>
-        </div>
-        <div class="msg me">
-          <div class="stack"><div class="bubble">不知道要不要换工作。50 岁了，出去没人要吧。</div></div>
-        </div>
-        <div class="msg">
-          <div class="av"></div>
-          <div class="stack">
-            <div class="bubble">这句话你说过两次，一次在 2019 年，一次在上周。<br><br>2019 年你也没走，但你到现在还在想它 —— 说明它不是一时兴起。</div>
-            <div class="acts"><button class="act unlike">不像我</button><button class="act">继续</button></div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-  </div>
-
-  <!-- 输入框（仅对话页） -->
-  <div class="composer" id="composer" style="display:none">
-    <input class="inp" id="inp" placeholder="说点什么…">
-    <button class="send" id="send" aria-label="发送">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#0C0A16" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg>
-    </button>
-  </div>
-
-  <nav class="tabbar">
-    <button class="tab on" data-go="home">
-      <svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/></svg>
-      <span>AIme</span>
-    </button>
-    <button class="tab" data-go="forge">
-      <svg viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/><circle cx="12" cy="12" r="4.2"/></svg>
-      <span>铸造</span>
-    </button>
-    <button class="tab" data-go="chat">
-      <svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-8 8H8l-4 2 1.2-3.6A8 8 0 1 1 21 12Z"/></svg>
-      <span>对话</span>
-    </button>
-  </nav>
-
-  <div class="mask" id="mask"></div>
-  <div class="sheet" id="sheet">
-    <div class="grab"></div>
-    <h3 id="sheet-t">形象</h3>
-    <p class="sub" id="sheet-s"></p>
-    <div id="sheet-kv"></div>
-    <button class="cta" style="margin-top:20px" id="sheet-btn">修改这一层</button>
-  </div>
-
-  <div class="toast" id="toast"></div>
+<div id="app">
+  <header id="topbar">
+    <div class="brand">AIme<small id="brandSub">电子生命 · 加密存储</small></div>
+    <div class="coin-pill" data-act="coins"><span class="coin-dot"></span><span id="coinTop">0</span></div>
+  </header>
+  <main id="view"></main>
+  <nav id="tabs"></nav>
 </div>
+<div id="sheet" class="sheet-wrap"><div class="mask" data-act="closeSheet"></div><div class="sheet" id="sheetBody"></div></div>
+<div id="toast"></div>
 
 <script>
-const screens = {home:document.getElementById('home'), forge:document.getElementById('forge'), chat:document.getElementById('chat')};
-const tabs = document.querySelectorAll('.tab');
-const composer = document.getElementById('composer');
+"use strict";
 
-let cur = 'home';
-function go(name){
-  if(name === cur) return;
-  Object.values(screens).forEach(s => s.classList.remove('active'));
-  screens[name].classList.add('active');
-  screens[name].scrollTop = 0;
-  tabs.forEach(t => t.classList.toggle('on', t.dataset.go === name));
-  composer.style.display = name === 'chat' ? 'flex' : 'none';
-  cur = name;
-}
+/* ───────────── 数据定义 ───────────── */
 
-document.querySelectorAll('[data-go]').forEach(el => el.addEventListener('click', () => go(el.dataset.go)));
-
-/* ---------- toast ---------- */
-let tt;
-function toast(msg){
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.add('on');
-  clearTimeout(tt);
-  tt = setTimeout(() => el.classList.remove('on'), 2200);
-}
-
-/* ---------- 时间轴 ---------- */
-const ERA = {
-  now:   {ctx:'正在与此刻的你对话', greet:'我在。先说结论，还是先说情绪？'},
-  past:  {ctx:'正在与 2011 年的你对话 · 20 岁，刚辞职', greet:'2011 年的我还没想明白。你现在知道答案了吗？'},
-  future:{ctx:'正在与 2069 年的你对话 · 70 岁', greet:'2069 年的我，身体不太行了，但脑子清楚。你想问什么？'}
-};
-let era = 'now';
-
-const REPLY = {
-  now:[
-    '这件事你已经想过三次了，每次结论都不同 —— 变的是处境，还是你不敢承认的那个答案？',
-    '要不要我扮演 2011 年的你，跟你争一次？他一定会说：你太稳了。',
-    '先别决定。把「不走的原因」写下来，看看有几条是因为怕。'
-  ],
-  past:[
-    '那时候你觉得辞职就是失败。现在呢？',
-    '你确定你怀念的是那个时候，还是那个时候还有可能性的自己？',
-    '我 20 岁那年没人告诉我：稳定是会过期的。'
-  ],
-  future:[
-    '回头看，你 2026 年那个决定是对的，虽然当时很痛。',
-    '别问我结果，问你敢不敢。',
-    '我到这个年纪才明白，后悔的从来不是做错的事，是没做的事。'
-  ]
-};
-let ri = {now:0, past:0, future:0};
-
-function setEra(e){
-  era = e;
-  document.querySelectorAll('.era').forEach(b => b.classList.toggle('on', b.dataset.era === e));
-  const ctx = document.getElementById('ctx');
-  document.getElementById('ctx-txt').textContent = ERA[e].ctx;
-  ctx.classList.toggle('idle', e === 'now');
-  document.getElementById('msgs').insertAdjacentHTML('beforeend',
-    '<div class="sys">时间轴已切换 · ' + ERA[e].ctx.replace('正在与','与').replace('对话','') + '</div>');
-  setTimeout(() => {
-    addAI(ERA[e].greet);
-    scrollBottom();
-  }, 420);
-  scrollBottom();
-}
-
-document.querySelectorAll('.era').forEach(b => b.addEventListener('click', () => {
-  if(b.dataset.era === era) return;
-  setEra(b.dataset.era);
-}));
-
-document.querySelectorAll('.tl').forEach(el => el.addEventListener('click', () => {
-  go('chat');
-  setTimeout(() => setEra(el.dataset.era), 260);
-}));
-
-/* ---------- 消息 ---------- */
-const msgs = document.getElementById('msgs');
-
-function actsHTML(){
-  return '<div class="acts"><button class="act unlike">不像我</button><button class="act">继续</button></div>';
-}
-
-function addAI(text){
-  const d = document.createElement('div');
-  d.className = 'msg';
-  d.innerHTML = '<div class="av"></div><div class="stack"><div class="bubble">' + text + '</div>' + actsHTML() + '</div>';
-  msgs.appendChild(d);
-  bindActs(d);
-}
-
-function addMe(text){
-  const d = document.createElement('div');
-  d.className = 'msg me';
-  d.innerHTML = '<div class="stack"><div class="bubble">' + text + '</div></div>';
-  msgs.appendChild(d);
-}
-
-function scrollBottom(){
-  const s = screens.chat;
-  setTimeout(() => s.scrollTop = s.scrollHeight, 60);
-}
-
-function bindActs(scope){
-  scope.querySelectorAll('.unlike').forEach(b => {
-    b.addEventListener('click', () => {
-      if(b.classList.contains('done')) return;
-      b.classList.add('done');
-      b.textContent = '已记录 ✓';
-      const n = document.querySelectorAll('.unlike.done').length;
-      toast('已进入纠偏语料池 · 累计 ' + n + ' 条差分');
-    });
-  });
-  scope.querySelectorAll('.act:not(.unlike)').forEach(b => {
-    b.addEventListener('click', () => {
-      toast('已标记为「值得追问」，将进入深度对话');
-    });
-  });
-}
-bindActs(msgs);
-
-/* ---------- 发送 ---------- */
-function send(){
-  const inp = document.getElementById('inp');
-  const v = inp.value.trim();
-  if(!v) return;
-  addMe(v);
-  inp.value = '';
-  scrollBottom();
-
-  const t = document.createElement('div');
-  t.className = 'msg';
-  t.innerHTML = '<div class="av"></div><div class="stack"><div class="bubble" style="padding:11px 15px"><div class="typing"><i></i><i></i><i></i></div></div></div>';
-  msgs.appendChild(t);
-  scrollBottom();
-
-  setTimeout(() => {
-    t.remove();
-    const pool = REPLY[era];
-    addAI(pool[ri[era] % pool.length]);
-    ri[era]++;
-    scrollBottom();
-  }, 900);
-}
-document.getElementById('send').addEventListener('click', send);
-document.getElementById('inp').addEventListener('keydown', e => { if(e.key === 'Enter') send(); });
-
-/* ---------- 画像弹层 ---------- */
-const LAYERS = [
-  {t:'形象', s:'面部、全身、仪态、表情习惯、穿着风格。从 2D 卡通到 3D + CT 共 8 级，级别越高越接近真人。',
-   kv:[['当前级别','L1.2 全身 2D 卡通'],['完成度','60%'],['下一级','L1.3 头部扫描 · 30 分钟'],['可修改','是 · 随时重采']]},
-  {t:'声音与语言', s:'正常状态、情绪状态、不同场合的说话习惯、文字表达习惯、口头禅、方言与外语。',
-   kv:[['当前级别','L1.2 多状态录制'],['完成度','45%'],['下一级','L1.3 场合语料 · 需 20 段'],['可修改','是 · 可撤回声纹授权']]},
-  {t:'性格与气质', s:'基于大五人格、情商、意志动机、习惯与气质分类的综合建模，测试项目越多级别越高。',
-   kv:[['当前级别','L2 · 完成 3 套量表'],['完成度','80%'],['外向性','42 / 内向'],['尽责性','78 / 高'],['气质','黏液质偏抑郁质']]},
-  {t:'体格与身体记忆', s:'体能、力量、耐力、疾病史、生理状态，以及身体记忆（疾病、运动习惯、身体感受）。',
-   kv:[['当前级别','L1 · 仅问卷'],['完成度','30%'],['下一级','上传体检报告 · 近 3 年'],['可修改','是']]},
-  {t:'认知与智商', s:'逻辑推理、记忆力、学习能力、创造力、认知能力、预判能力、大局观与格局。',
-   kv:[['当前级别','L2'],['完成度','70%'],['逻辑推理','前 18%'],['工作记忆','中上'],['预判能力','待补测']]},
-  {t:'价值与意义', s:'三观、信念与信仰、自我认同、人生目标与意义感。这一层决定 AIme 在冲突情境下怎么选。',
-   kv:[['当前级别','L2'],['完成度','55%'],['世界观','务实 · 弱理想主义'],['道德原则','义务论倾向'],['待补','人生目标陈述']]},
-  {t:'经历与角色', s:'家庭背景、成长经历、重大事件、挫折与转折、教育经历、社交关系、角色经历。',
-   kv:[['当前级别','L2'],['完成度','65%'],['已录入','12 个重大事件'],['角色','子女 / 员工 / 伴侣 / 父母'],['待补','职场关系网络']]},
-  {t:'反思与叙事', s:'你如何讲述自己的故事、如何解释过去、自我评价、元认知、"我"的边界、未选择的可能性。',
-   kv:[['当前级别','L1'],['完成度','25%'],['最短路径','3 次深度对话 +9%'],['权重','最高 · 决定像不像'],['可修改','是']]}
+var LAYERS = [
+  { id:"image", name:"形象", note:"外形、表情与气质的可视化载体", sensitive:"face",
+    fields:["全身卡通","2D 建模","3D 扫描建模","3D + 骨相 + CT","表情习惯","气质","仪态","穿着风格"] },
+  { id:"voice", name:"声音", note:"声线、语言与表达习惯", sensitive:"voice",
+    fields:["基础声线","语言及表达习惯","方言","语言技能"] },
+  { id:"persona", name:"性格", note:"测评结果与行为倾向", sensitive:null,
+    fields:["性格测试","认知能力","情商 · 自我觉察","情商 · 情绪调节","情商 · 共情","情商 · 社交技巧",
+            "意志 · 自控力","意志 · 目标感","意志 · 抗压能力","意志 · 兴趣偏好","行为模式","日常习惯","审美偏好"] },
+  { id:"body", name:"体格", note:"身体能力与生理基线", sensitive:null,
+    fields:["体能","生理状态","身体记忆"] },
+  { id:"cognition", name:"认知智商", note:"思维能力的量化画像", sensitive:null,
+    fields:["逻辑推理","记忆力","学习能力","创造力","认知能力","预判能力","大局观","格局"] },
+  { id:"value", name:"价值与意义", note:"三观、信念与自我认同", sensitive:null,
+    fields:["世界观","人生观","价值观","宗教","政治倾向","道德原则","自我认同","人生目标与意义感"] },
+  { id:"history", name:"经历", note:"时间线上的事件与角色", sensitive:null,
+    fields:["家庭背景","成长经历","重大事件","挫折与转折","教育经历","知识结构","朋友圈","亲密关系",
+            "职场关系","社会网络","角色经历","当前环境","当前角色","社会位置","文化背景","群体归属",
+            "时代背景","社交网络及定位"] },
+  { id:"narrative", name:"反思叙事", note:"你如何讲述自己", sensitive:null,
+    fields:["自我叙事","自我评价","自尊","自我效能感","自我接纳","元认知","「我」的边界","未选择的可能性"] }
 ];
 
-const mask = document.getElementById('mask');
-const sheet = document.getElementById('sheet');
+var IMAGE_STEPS = [
+  { lv:"1.1", name:"全身卡通", desc:"静态二维形象，注册即得", cost:0, need:null, door:false },
+  { lv:"1.2", name:"2D 细绘 + 表情习惯", desc:"16 种表情包，贴合你的习惯性微表情", cost:60, need:"face", door:false },
+  { lv:"1.3", name:"3D 扫描建模", desc:"到店 15 分钟全身扫描，产出可动模型", cost:240, need:null, door:true },
+  { lv:"1.4", name:"3D + 骨相 + 表情绑定", desc:"骨相驱动，表情不受模型限制", cost:480, need:null, door:true },
+  { lv:"1.5", name:"3D + CT 骨相重建", desc:"需上传医学影像（CT/MRI），单独授权", cost:900, need:"ct", door:false },
+  { lv:"1.6", name:"动态仪态 + 气质参数", desc:"步态、坐姿、语速联动，需 30 天行为数据", cost:1400, need:null, door:false },
+  { lv:"1.7", name:"穿着风格库 + 场景适配", desc:"按场合自动换装，含季节与风格偏好", cost:1800, need:null, door:false },
+  { lv:"1.8", name:"全息级形象", desc:"需要专用采集设备，暂未开放", cost:null, need:"never", door:false }
+];
 
-document.querySelectorAll('.layer').forEach(el => {
-  el.addEventListener('click', () => {
-    const d = LAYERS[+el.dataset.layer];
-    document.getElementById('sheet-t').textContent = d.t;
-    document.getElementById('sheet-s').textContent = d.s;
-    document.getElementById('sheet-kv').innerHTML = d.kv
-      .map(k => '<div class="kv"><span>' + k[0] + '</span><b>' + k[1] + '</b></div>').join('');
-    mask.classList.add('on');
-    sheet.classList.add('on');
+var VOICE_STEPS = [
+  { lv:"2.1", name:"基础声线", desc:"通用 TTS 声线，非你本人", cost:0, need:null },
+  { lv:"2.2", name:"声纹克隆", desc:"需本人书面授权 + 声纹单独同意", cost:320, need:"voice" },
+  { lv:"2.3", name:"多状态声线", desc:"疲惫、兴奋、正式、私密四种状态", cost:560, need:"voice" },
+  { lv:"2.4", name:"方言与语言技能扩展", desc:"方言腔调 + 多语种切换", cost:760, need:"voice" }
+];
+
+var WORLDS = [
+  { id:"mirror", name:"本世界镜像", laws:["现实物理参数","1:1 城市","可短期穿越"], desc:"与你所处的现实完全同构，用于预演明天的对话与决策。", seed:"REAL" },
+  { id:"random", name:"随机参数世界", laws:["重力可调","参数随机生成","每局唯一"], desc:"系统按随机参数生成全新世界，物理定律每局不同。", seed:"RND-41F" },
+  { id:"abyss", name:"深海文明", laws:["高压","无光","声呐语言"], desc:"在 8000 米海沟里重建一整套文明秩序。", seed:"OCEAN" },
+  { id:"dust", name:"星际尘埃带", laws:["低重力","真空","长周期"], desc:"资源极稀缺的开拓世界，考验长期决策。", seed:"STAR" },
+  { id:"debate", name:"纯主角推演场", laws:["关键人物注入","多走向并行","可回滚"], desc:"把关键人物的 AIme 投入同一场景，推演经济、军事、科技的多种走向。", seed:"SIM-X" }
+];
+
+var LABORS = [
+  { id:"mine", ico:"⛏", name:"矿物开采", coin:18, cd:20, desc:"在随机参数世界采掘稀有矿脉" },
+  { id:"build", ico:"🏗", name:"基建建造", coin:26, cd:30, desc:"为新生世界铺设能源管网" },
+  { id:"teach", ico:"📖", name:"知识传授", coin:22, cd:25, desc:"向其它电子生命讲授人类学科" },
+  { id:"survey", ico:"🧭", name:"地形勘察", coin:14, cd:15, desc:"测绘未定义区域，回传参数" }
+];
+
+var TOPICS = [
+  { t:"可控核聚变的约束场稳定性", p:"人脑 42 · AIme 118 · 模型 6", hot:true },
+  { t:"文明起源的必要条件是否唯一", p:"人脑 87 · AIme 203 · 模型 11", hot:false },
+  { t:"如果记忆可编辑，「我」还是我吗", p:"人脑 156 · AIme 74 · 模型 4", hot:true },
+  { t:"虚拟世界的劳动是否应折算现实价值", p:"人脑 63 · AIme 91 · 模型 8", hot:false }
+];
+
+var PERSONAS = {
+  past: { label:"20 岁的我", sub:"校准用 · 你的决策基线",
+    greet:"……我其实不太确定该说什么。你那边，后来做成了吗？",
+    replies:[
+      "那时候我以为只要够努力就够了。现在回头看，好像不是这样。",
+      "我记得那天晚上在阳台上站了很久，最后还是没敢说出口。",
+      "你要是现在过得还行，那我这些犹豫也不算白费。",
+      "别急着回答我。你先想想，当初为什么非要做那件事。",
+      "我有点怕。怕你走的这条路，其实是替我逃掉了另一条。"
+    ] },
+  now: { label:"现在的我", sub:"本体 · 正在校准",
+    greet:"今天想校准哪一段？说具体的事，别讲结论。",
+    replies:[
+      "这句话不像我平时的说法。我记一下这个差分。",
+      "嗯。我当时的第一反应其实不是这个，是先算代价。",
+      "你这么说，我大概会沉默三秒，然后换个话题。",
+      "把细节再给我一点。抽象的判断我学不会，具体的场景才行。",
+      "这个应对方式我接受。进语料池吧，下一轮校准会用到。"
+    ] },
+  future: { label:"70 岁的我", sub:"投射 · 长周期视角",
+    greet:"你来了。坐吧，不着急说。",
+    replies:[
+      "这件事，四十年后你不会记得细节，只记得当时有没有说实话。",
+      "我那时候也没想到，真正留下来的不是成绩，是几个人。",
+      "你现在纠结的取舍，其实两条路都能走通，代价不同罢了。",
+      "慢一点。你还有很长的路，不必在这一年把答案定死。",
+      "如果一定要我讲一句：别为了正确，把想做的事一直往后推。"
+    ] },
+  yangming: { label:"王阳明", sub:"已录入思想 · 论心学",
+    greet:"心即理。你心中所困，不必外求。且说，是何事让你不安？",
+    replies:[
+      "知是行之始，行是知之成。你若真知，自然不会停在言语上。",
+      "破山中贼易，破心中贼难。你怕的不是那件事，是怕自己不够。",
+      "事上磨练。离开具体的事去求心静，求不到。",
+      "无善无恶心之体，有善有恶意之动。先看清那个「动」。"
+    ] },
+  einstein: { label:"爱因斯坦", sub:"已录入思想 · 论方法",
+    greet:"Interesting. 你提的问题，是观察带来的，还是想象带来的？",
+    replies:[
+      "问题的表述方式，往往决定了答案的范围。先重述一遍你的问题。",
+      "如果一件事无法用简单的语言讲清，说明你还没真正理解它。",
+      "我不相信直觉，但我相信直觉提出的假设。区别在于前者不设可证伪的条件。",
+      "把参照系换一下。你在自己的框架里痛苦，是因为你只允许一个框架。"
+    ] }
+};
+
+/* ───────────── 状态 ───────────── */
+
+var LS_KEY = "aime.state.v3";
+
+function seedDone(){
+  var ratio = { image:.5, voice:.25, persona:.62, body:.66, cognition:.375, value:.5, history:.44, narrative:.25 };
+  var out = {};
+  LAYERS.forEach(function(L){
+    var n = Math.round(L.fields.length * (ratio[L.id] || .4));
+    for (var i = 0; i < n; i++) out[L.id + ":" + i] = 1;
   });
-});
-
-function closeSheet(){
-  mask.classList.remove('on');
-  sheet.classList.remove('on');
+  return out;
 }
-mask.addEventListener('click', closeSheet);
-document.getElementById('sheet-btn').addEventListener('click', () => {
-  closeSheet();
-  toast('本层已进入编辑模式 · 保存后立即生效');
-});
 
-/* ---------- 其它交互 ---------- */
-document.querySelectorAll('.step').forEach(el => {
-  el.addEventListener('click', () => {
-    const v = el.dataset.step;
-    if(v === '1.1' || v === '1.2'){ toast('L' + v + ' 已完成 · 可随时重拍'); return; }
-    toast('L' + v + ' 需要到店采集 · 预计排队 2 天');
+function defaultState(){
+  return {
+    tab:"life",
+    done: seedDone(),
+    imageLv: 1,
+    voiceLv: 0,
+    coins: 1480,
+    ledger: [
+      { t:"注册建档赠送", v:1000, ts:Date.now() - 86400000 * 6 },
+      { t:"深海文明 · 知识传授", v:22, ts:Date.now() - 86400000 * 2 },
+      { t:"形象升级 L1.2", v:-60, ts:Date.now() - 86400000 * 2 },
+      { t:"星际尘埃带 · 矿物开采", v:18, ts:Date.now() - 3600000 * 5 },
+      { t:"校准轮次奖励", v:500, ts:Date.now() - 3600000 * 2 }
+    ],
+    consent: { face:true, voice:false, ct:false },
+    storage:"local",
+    diffs: 0,
+    calibRounds: 6,
+    chat: { past:[], now:[], future:[], yangming:[], einstein:[] },
+    activePersona:"now",
+    expanded:"image",
+    labor:{},
+    worldsEntered:["mirror","abyss"],
+    evolution: 37
+  };
+}
+
+var state;
+try {
+  var raw = localStorage.getItem(LS_KEY);
+  state = raw ? JSON.parse(raw) : defaultState();
+  if (!state || !state.done) state = defaultState();
+} catch (e){ state = defaultState(); }
+
+function save(){ try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e){} }
+
+/* ───────────── 工具 ───────────── */
+
+function layerPct(L){
+  var c = 0;
+  L.fields.forEach(function(_, i){ if (state.done[L.id + ":" + i]) c++; });
+  return Math.round(c / L.fields.length * 100);
+}
+function totalPct(){
+  var n = 0, c = 0;
+  LAYERS.forEach(function(L){
+    L.fields.forEach(function(_, i){ n++; if (state.done[L.id + ":" + i]) c++; });
   });
+  return Math.round(c / n * 100);
+}
+function doneCount(){
+  var c = 0;
+  for (var k in state.done) if (state.done[k]) c++;
+  return c;
+}
+function totalFields(){ return LAYERS.reduce(function(a, L){ return a + L.fields.length; }, 0); }
+function esc(s){
+  return String(s).replace(/[&<>"]/g, function(c){
+    return ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" })[c];
+  });
+}
+function toast(msg){
+  var el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(el._t);
+  el._t = setTimeout(function(){ el.classList.remove("show"); }, 2100);
+}
+function spend(v, why){
+  if (state.coins < v){ toast("能量币不足，去「世界」劳动获取"); return false; }
+  state.coins -= v;
+  state.ledger.unshift({ t:why, v:-v, ts:Date.now() });
+  save();
+  return true;
+}
+function earn(v, why){
+  state.coins += v;
+  state.ledger.unshift({ t:why, v:v, ts:Date.now() });
+  save();
+}
+function pctColor(p){ return p >= 80 ? "var(--acc2)" : p >= 45 ? "var(--acc)" : "var(--warm)"; }
+
+/* ───────────── 外壳 ───────────── */
+
+var TABS = [
+  { id:"life",  label:"生命", path:"M3 12h3.5l2-5.5 3 11 2-5.5H21" },
+  { id:"forge", label:"铸造", path:"M12 3l9 5-9 5-9-5 9-5zM3 13.5l9 5 9-5" },
+  { id:"chat",  label:"对话", path:"M20.5 11.8a8 8 0 01-11.7 7.1L4 20.5l1.6-4.6A8 8 0 1120.5 11.8z" },
+  { id:"world", label:"世界", path:"M12 3a9 9 0 100 18 9 9 0 000-18zM3.5 9h17M3.5 15h17M12 3c2.5 2.4 3.8 5.4 3.8 9s-1.3 6.6-3.8 9c-2.5-2.4-3.8-5.4-3.8-9s1.3-6.6 3.8-9z" },
+  { id:"me",    label:"我的", path:"M12 12a4 4 0 100-8 4 4 0 000 8zM4.5 21c.6-4.2 3.7-6.4 7.5-6.4s6.9 2.2 7.5 6.4" }
+];
+
+function renderTabs(){
+  document.getElementById("tabs").innerHTML = TABS.map(function(t){
+    return '<button data-act="tab" data-id="' + t.id + '" class="' + (state.tab === t.id ? "on" : "") + '">' +
+      '<svg viewBox="0 0 24 24"><path d="' + t.path + '"/></svg>' +
+      '<span>' + t.label + '</span></button>';
+  }).join("");
+}
+function renderTop(){
+  document.getElementById("coinTop").textContent = state.coins.toLocaleString("zh-CN");
+  document.getElementById("brandSub").textContent = "电子生命 · " + (state.storage === "local" ? "本地加密" : "云端加密");
+}
+
+/* ───────────── 生命 ───────────── */
+
+function screenLife(){
+  var p = totalPct();
+  var C = 2 * Math.PI * 60;
+  var off = C * (1 - p / 100);
+  var weakest = LAYERS.slice().sort(function(a, b){ return layerPct(a) - layerPct(b); })[0];
+  var wpct = layerPct(weakest);
+
+  var html = '<div class="screen">';
+
+  html += '<div class="hero">';
+  html += '<div class="orb"><svg viewBox="0 0 132 132">' +
+    '<defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">' +
+    '<stop offset="0" stop-color="#8B7CFF"/><stop offset="1" stop-color="#3FE0C0"/></linearGradient></defs>' +
+    '<circle class="ring-bg" cx="66" cy="66" r="60"/>' +
+    '<circle class="ring-fg" cx="66" cy="66" r="60" stroke-dasharray="' + C.toFixed(1) + '" stroke-dashoffset="' + off.toFixed(1) + '"/>' +
+    '</svg><div class="core"></div></div>';
+  html += '<div class="orb-num">' + p + '<span>%</span></div>';
+  html += '<div class="orb-cap">电子生命铸造完成度</div>';
+  html += '<div class="stat3">' +
+    '<div><b>' + doneCount() + '/' + totalFields() + '</b><i>已确认维度</i></div>' +
+    '<div><b>' + state.calibRounds + '</b><i>校准轮次</i></div>' +
+    '<div><b>' + state.diffs + '</b><i>纠偏差分</i></div>' +
+    '</div></div>';
+
+  html += '<div class="card tight" data-act="gotoLayer" data-id="' + weakest.id + '">' +
+    '<div class="between" style="margin-bottom:9px"><span class="k" style="margin:0">今日校准建议</span>' +
+    '<span class="tag warm">最低层 ' + wpct + '%</span></div>' +
+    '<div style="font-size:15px;font-weight:600;margin-bottom:5px">先补「' + weakest.name + '」</div>' +
+    '<div class="sub">这一层只有 ' + wpct + '%，是全生命最短的板块。补 3 个维度约需 5 分钟。</div>' +
+    '<div class="bar" style="margin-top:11px"><i style="width:' + wpct + '%;background:linear-gradient(90deg,#FFB86B,#FF8FA0)"></i></div>' +
+    '</div>';
+
+  html += '<div class="h2">与谁对话 <em>时间轴校准</em></div>';
+  html += '<div class="card tight" style="padding:0 14px">';
+  [["past","曾经的","20 岁的我","校准基线"],
+   ["now","现在的","正在成形的我","主校准"],
+   ["future","未来的","70 岁的我","长周期投射"]].forEach(function(x){
+    html += '<div class="list-row" data-act="openChat" data-id="' + x[0] + '">' +
+      '<div><div class="lbl">' + x[1] + ' · ' + x[2] + '</div>' +
+      '<div class="sub" style="margin-top:2px">' + x[3] + '</div></div>' +
+      '<div class="val">进入 ›</div></div>';
+  });
+  html += '</div>';
+
+  html += '<div class="h2">世界状态 <em>演化 ' + state.evolution + '%</em></div>';
+  html += '<div class="card">' +
+    '<div class="between" style="margin-bottom:10px"><span style="font-size:14px">AIme 在虚拟世界中的演化</span>' +
+    '<span class="mono" style="color:#8DEFD9;font-size:13px">' + state.evolution + '%</span></div>' +
+    '<div class="bar"><i style="width:' + state.evolution + '%"></i></div>' +
+    '<div class="sub" style="margin-top:10px">已与 214 个电子生命发生交互，产生 9 项发明记录，其中 3 项已回传现实世界。</div>' +
+    '<button class="btn-g" style="margin-top:12px" data-act="tab" data-id="world">进入虚拟世界</button></div>';
+
+  html += '<div class="card tight" style="border-color:rgba(63,224,192,.2);background:rgba(63,224,192,.045)">' +
+    '<div class="row"><span style="font-size:16px">🔒</span><div class="grow">' +
+    '<div style="font-size:13px;font-weight:600">八层画像已加密存储</div>' +
+    '<div class="sub">' + (state.storage === "local" ? "仅存于本机，不上传" : "端到端加密，密钥在你手里") + ' · 可随时撤回授权</div>' +
+    '</div></div></div>';
+
+  html += '</div>';
+  return html;
+}
+
+/* ───────────── 铸造 ───────────── */
+
+function screenForge(){
+  var html = '<div class="screen">';
+  html += '<div class="h2" style="margin-top:4px">八层画像 <em>' + totalPct() + '%</em></div>';
+  html += '<div class="sub" style="margin:-4px 2px 12px">每一层独立计分、可升级、可修改。点维度即确认，随时可撤回。</div>';
+
+  html += '<div class="card" style="padding:4px 14px">';
+  LAYERS.forEach(function(L, idx){
+    var p = layerPct(L);
+    var open = state.expanded === L.id;
+    html += '<div class="layer">';
+    html += '<div class="layer-head" data-act="toggleLayer" data-id="' + L.id + '">' +
+      '<div class="layer-idx ' + (p >= 80 ? "done" : "") + '">' + (idx + 1) + '</div>' +
+      '<div class="grow"><div class="between" style="margin-bottom:6px">' +
+      '<span style="font-size:14.5px;font-weight:600">' + L.name +
+      (L.sensitive ? ' <span class="tag lock" style="margin-left:4px">敏感</span>' : '') + '</span>' +
+      '<span class="mono" style="font-size:12px;color:' + pctColor(p) + '">' + p + '%</span></div>' +
+      '<div class="bar"><i style="width:' + p + '%"></i></div></div>' +
+      '<div style="color:var(--dim2);font-size:14px;transform:rotate(' + (open ? 90 : 0) + 'deg);transition:.2s">›</div>' +
+      '</div>';
+
+    if (open){
+      html += '<div class="layer-body"><div class="sub">' + L.note + '</div><div class="chips">';
+      L.fields.forEach(function(f, i){
+        var key = L.id + ":" + i;
+        var on = !!state.done[key];
+        var locked = L.sensitive && !state.consent[L.sensitive] && i > 0;
+        html += '<div class="chip ' + (on ? "on" : "") + (locked ? " locked" : "") +
+          '" data-act="toggleField" data-key="' + key + '" data-layer="' + L.id + '" data-i="' + i + '">' +
+          f + (on ? '<small>✓</small>' : '') + '</div>';
+      });
+      html += '</div>';
+      if (L.sensitive && !state.consent[L.sensitive]){
+        html += '<div class="sub" style="margin-top:11px;color:#FFCE97">⚠︎ ' +
+          (L.sensitive === "voice" ? "声纹" : "人脸与影像") + '属敏感个人信息，需单独同意后才能录入。' +
+          '<span style="color:#B9AEFF" data-act="gotoMe">去授权 ›</span></div>';
+      }
+      html += '</div>';
+    }
+    html += '</div>';
+  });
+  html += '</div>';
+
+  html += '<div class="h2">形象分级 <em>当前 L' + IMAGE_STEPS[state.imageLv].lv + '</em></div>';
+  html += '<div class="card" style="padding:6px 14px">';
+  IMAGE_STEPS.forEach(function(s, i){
+    var cls = i < state.imageLv ? "on" : (i === state.imageLv ? "now" : "lock");
+    var tail;
+    if (i < state.imageLv) tail = '<span class="tag mint">已解锁</span>';
+    else if (i === state.imageLv) tail = '<span class="tag acc">当前</span>';
+    else if (s.need === "never") tail = '<span class="tag lock">未开放</span>';
+    else if (s.need && !state.consent[s.need]) tail = '<span class="tag lock">需授权</span>';
+    else tail = '<span class="tag warm">' + s.cost + ' 能量币</span>';
+
+    html += '<div class="step ' + cls + '" data-act="upgradeImage" data-i="' + i + '">' +
+      '<div class="step-dot"></div><div class="grow">' +
+      '<div class="between"><b>' + s.lv + ' ' + s.name + '</b>' + tail + '</div>' +
+      '<p>' + s.desc + '</p></div></div>';
+  });
+  html += '</div>';
+
+  html += '<div class="h2">声音分级 <em>当前 L' + VOICE_STEPS[state.voiceLv].lv + '</em></div>';
+  html += '<div class="card" style="padding:6px 14px">';
+  VOICE_STEPS.forEach(function(s, i){
+    var cls = i < state.voiceLv ? "on" : (i === state.voiceLv ? "now" : "lock");
+    var tail;
+    if (i < state.voiceLv) tail = '<span class="tag mint">已解锁</span>';
+    else if (i === state.voiceLv) tail = '<span class="tag acc">当前</span>';
+    else if (s.need && !state.consent[s.need]) tail = '<span class="tag lock">需授权</span>';
+    else tail = '<span class="tag warm">' + s.cost + ' 能量币</span>';
+
+    html += '<div class="step ' + cls + '" data-act="upgradeVoice" data-i="' + i + '">' +
+      '<div class="step-dot"></div><div class="grow">' +
+      '<div class="between"><b>' + s.lv + ' ' + s.name + '</b>' + tail + '</div>' +
+      '<p>' + s.desc + '</p></div></div>';
+  });
+  html += '</div>';
+
+  html += '<div class="card tight"><div class="sub">升级 L1.5 及以上需要医学影像（CT/MRI），属敏感个人信息。系统只保存重建后的骨相参数，原始影像阅后即删。</div></div>';
+  html += '</div>';
+  return html;
+}
+
+/* ───────────── 对话 ───────────── */
+
+function screenChat(){
+  var pid = state.activePersona;
+  if (pid === "famouslist") return famousList();
+  return chatUI(pid);
+}
+
+function famousList(){
+  var html = '<div class="screen">';
+  html += '<div class="h2" style="margin-top:4px">历史名人 <em>思想已 AI 生命化</em></div>';
+  html += '<div class="sub" style="margin:-4px 2px 12px">录入其著作与思想，让 AIme 与之对话，完成自我学习与持续进化。</div>';
+  html += '<div class="card" style="padding:0 14px">';
+  [
+    { id:"yangming", n:"王阳明", d:"心学 · 知行合一", ok:true },
+    { id:"einstein", n:"爱因斯坦", d:"相对论 · 科学方法", ok:true },
+    { id:"socrates", n:"苏格拉底", d:"诘问法", ok:false },
+    { id:"zhuangzi", n:"庄子", d:"齐物 · 逍遥", ok:false }
+  ].forEach(function(p){
+    html += '<div class="list-row" style="padding:14px" data-act="' + (p.ok ? "openChat" : "toastSoon") + '" data-id="' + p.id + '">' +
+      '<div><div class="lbl">' + p.n + '</div><div class="sub" style="margin-top:2px">' + p.d + '</div></div>' +
+      '<div class="val">' + (p.ok ? '对话 ›' : '待录入') + '</div></div>';
+  });
+  html += '</div>';
+  html += '<div class="card tight"><div class="sub">录入一位历史名人约需 300 万字语料 + 思想体系标注，当前排队 2 位。语料包可由社区贡献（见 CONTRIBUTING）。</div></div>';
+  html += '<div class="tl" style="margin-top:6px"><button data-act="openChat" data-id="now">← 回到现在的我</button></div>';
+  html += '</div>';
+  return html;
+}
+
+function chatUI(pid){
+  var P = PERSONAS[pid] || PERSONAS.now;
+  var msgs = state.chat[pid] || (state.chat[pid] = []);
+
+  var html = '<div class="screen">';
+  html += '<div class="tl">';
+  [["past","曾经"],["now","现在"],["future","未来"],["yangming","王阳明"],["einstein","爱因斯坦"],["famouslist","名人堂"]].forEach(function(x){
+    html += '<button data-act="persona" data-id="' + x[0] + '" class="' + (pid === x[0] ? "on" : "") + '">' + x[1] + '</button>';
+  });
+  html += '</div>';
+
+  html += '<div id="stream">';
+  html += '<div class="card tight" style="background:rgba(139,124,255,.06);border-color:rgba(139,124,255,.18);margin-bottom:14px">' +
+    '<div class="between"><span style="font-size:13px;font-weight:600">' + P.label + '</span>' +
+    '<span class="tag acc">聊天免费</span></div>' +
+    '<div class="sub" style="margin-top:4px">' + P.sub + ' · 每次回应可点「不像我」记录差分</div></div>';
+
+  if (!msgs.length){
+    var gf = state.greetFlag && state.greetFlag[pid];
+    html += '<div class="msg aime"><div class="who">' + P.label + '</div>' +
+      '<div class="bubble">' + esc(P.greet) + '</div>' +
+      '<div class="acts"><button class="act ' + (gf ? "done" : "") + '" data-act="flag" data-i="-1">' +
+      (gf ? "已记录 ✓" : "不像我") + '</button></div></div>';
+  } else {
+    msgs.forEach(function(m, i){ html += msgHTML(m, i, P); });
+  }
+  html += '</div>';
+
+  html += '<div class="composer">' +
+    '<input id="inp" placeholder="说一件具体的事…" autocomplete="off">' +
+    '<button data-act="send">发送</button></div>';
+  html += '</div>';
+  return html;
+}
+
+function msgHTML(m, i, P){
+  if (m.role === "me"){
+    return '<div class="msg me"><div class="who">我</div><div class="bubble">' + esc(m.text) + '</div></div>';
+  }
+  return '<div class="msg aime"><div class="who">' + P.label + '</div>' +
+    '<div class="bubble">' + esc(m.text) + '</div>' +
+    '<div class="acts"><button class="act ' + (m.flagged ? "done" : "") + '" data-act="flag" data-i="' + i + '">' +
+    (m.flagged ? "已记录 ✓" : "不像我") + '</button>' +
+    (m.flagged ? '<span class="sub" style="font-size:11px">已进纠偏语料池</span>' : '') +
+    '</div></div>';
+}
+
+/* ───────────── 世界 ───────────── */
+
+function screenWorld(){
+  var html = '<div class="screen">';
+
+  html += '<div class="hero" style="padding:16px">' +
+    '<div class="between"><div><div class="k" style="margin:0">能量币</div>' +
+    '<div style="font-size:26px;font-weight:680;color:var(--warm)" class="mono">' + state.coins.toLocaleString("zh-CN") + '</div></div>' +
+    '<div style="text-align:right"><div class="sub">聊天免费</div><div class="sub">学习与进化消耗</div></div></div></div>';
+
+  html += '<div class="h2">虚拟世界 <em>' + WORLDS.length + ' 个已生成</em></div>';
+  WORLDS.forEach(function(w){
+    var entered = state.worldsEntered.indexOf(w.id) >= 0;
+    html += '<div class="world" data-act="enterWorld" data-id="' + w.id + '"><div class="glow"></div>' +
+      '<h4>' + w.name + (entered ? '<span class="tag mint">已进入</span>' : '<span class="tag">未探索</span>') + '</h4>' +
+      '<div class="sub">' + w.desc + '</div>' +
+      '<div class="laws">' + w.laws.map(function(l){ return '<span class="tag lock">' + l + '</span>'; }).join("") + '</div>' +
+      '</div>';
+  });
+
+  html += '<div class="card tight" style="margin-top:2px"><div class="k">穿越规则</div>' +
+    '<div class="sub">· 本世界 → 其它世界：短期穿越，可返回<br>' +
+    '· 其它世界 → 其它世界：无期限穿越<br>' +
+    '<span style="color:#FF8F9C">· 其它世界 → 本世界：禁止</span></div></div>';
+
+  html += '<div class="h2">劳动结算 <em>获得能量币</em></div>';
+  html += '<div class="card" style="padding:4px 14px">';
+  LABORS.forEach(function(l){
+    var last = state.labor[l.id] || 0;
+    var left = Math.max(0, Math.ceil((l.cd * 1000 - (Date.now() - last)) / 1000));
+    html += '<div class="labor">' +
+      '<div class="labor-ico">' + l.ico + '</div>' +
+      '<div class="grow"><div style="font-size:13.5px;font-weight:600">' + l.name + '</div>' +
+      '<div class="sub" style="font-size:11.5px">' + l.desc + '</div></div>' +
+      '<button class="btn-s" data-act="labor" data-id="' + l.id + '"' + (left > 0 ? " disabled" : "") + '>' +
+      (left > 0 ? left + "s" : "+" + l.coin) + '</button></div>';
+  });
+  html += '</div>';
+
+  html += '<div class="h2">主题论坛 <em>人脑 × AIme × 模型</em></div>';
+  html += '<div class="card" style="padding:4px 14px">';
+  TOPICS.forEach(function(t, i){
+    html += '<div class="topic" data-act="topic" data-i="' + i + '">' +
+      '<div class="n">' + (i + 1 < 10 ? "0" : "") + (i + 1) + '</div>' +
+      '<div class="grow"><b>' + t.t + (t.hot ? ' <span class="tag warm" style="margin-left:4px">热议</span>' : '') + '</b>' +
+      '<p>' + t.p + '</p></div></div>';
+  });
+  html += '</div>';
+
+  html += '<div class="h2">万物生命化 <em>品牌 · 学派 · 星球</em></div>';
+  html += '<div class="card"><div class="sub">将公司、法人、品牌输入 AIme，将其拟人化并加速品牌推广；部分动物、植物、星球、学派也可生命化。</div>' +
+    '<button class="btn-p" style="margin-top:12px" data-act="brand">创建生命化对象</button></div>';
+
+  html += '</div>';
+  return html;
+}
+
+/* ───────────── 我的 ───────────── */
+
+function screenMe(){
+  var html = '<div class="screen">';
+
+  html += '<div class="card" style="background:linear-gradient(140deg,rgba(139,124,255,.14),rgba(63,224,192,.07)),var(--card)">' +
+    '<div class="row"><div style="width:46px;height:46px;border-radius:50%;flex:0 0 auto;background:radial-gradient(circle at 36% 30%,#fff,#B9AEFF 30%,#6A58F0 70%);box-shadow:0 0 20px rgba(139,124,255,.5)"></div>' +
+    '<div class="grow"><div style="font-size:16px;font-weight:640">洪君的 AIme</div>' +
+    '<div class="sub">L' + IMAGE_STEPS[state.imageLv].lv + ' 形象 · 铸造 ' + totalPct() + '% · 校准 ' + state.calibRounds + ' 轮</div></div></div></div>';
+
+  html += '<div class="h2">能量币 <em class="mono">' + state.coins.toLocaleString("zh-CN") + '</em></div>';
+  html += '<div class="card" style="padding:4px 14px">';
+  state.ledger.slice(0, 6).forEach(function(l){
+    var pos = l.v > 0;
+    html += '<div class="list-row" style="cursor:default">' +
+      '<div><div class="lbl" style="font-size:13.5px">' + esc(l.t) + '</div>' +
+      '<div class="sub" style="font-size:11px">' + new Date(l.ts).toLocaleDateString("zh-CN") + '</div></div>' +
+      '<div class="val mono" style="color:' + (pos ? "#8DEFD9" : "var(--dim)") + '">' + (pos ? "+" : "") + l.v + '</div></div>';
+  });
+  html += '</div>';
+  html += '<div class="card tight" style="background:rgba(255,184,107,.05);border-color:rgba(255,184,107,.2)">' +
+    '<div class="sub" style="color:#FFCE97">iOS 端不提供虚拟商品购买入口。iOS 用户的能量币只能通过虚拟世界劳动获取，这是平台规则，不是产品选择。</div></div>';
+
+  html += '<div class="h2" id="consent">敏感信息授权 <em>可单独撤回</em></div>';
+  html += '<div class="card" style="padding:4px 14px">';
+  [["face","人脸与形象采集","用于 2D/3D 形象建模"],
+   ["voice","声纹克隆","用于声音还原与多状态声线"],
+   ["ct","医学影像（CT/MRI）","用于骨相重建，原始影像阅后即删"]].forEach(function(c){
+    var on = state.consent[c[0]];
+    html += '<div class="list-row" style="cursor:default">' +
+      '<div class="grow"><div class="lbl" style="font-size:14px">' + c[1] + '</div>' +
+      '<div class="sub" style="font-size:11.5px">' + c[2] + '</div></div>' +
+      '<div class="sw ' + (on ? "on" : "") + '" data-act="consent" data-id="' + c[0] + '"></div></div>';
+  });
+  html += '</div>';
+
+  html += '<div class="h2">数据与安全</div>';
+  html += '<div class="card" style="padding:4px 14px">';
+  html += '<div class="list-row" data-act="toggleStorage">' +
+    '<div><div class="lbl">存储位置</div><div class="sub" style="font-size:11.5px">切换后画像需重新加密同步</div></div>' +
+    '<div class="val">' + (state.storage === "local" ? "仅本机" : "云端加密") + ' ›</div></div>';
+  html += '<div class="list-row" data-act="exportData">' +
+    '<div><div class="lbl">导出我的画像</div><div class="sub" style="font-size:11.5px">JSON 格式，含全部已确认维度</div></div>' +
+    '<div class="val">导出 ›</div></div>';
+  html += '<div class="list-row" data-act="wipe">' +
+    '<div><div class="lbl" style="color:#FF8F9C">清除全部数据</div><div class="sub" style="font-size:11.5px">不可恢复，需二次确认</div></div>' +
+    '<div class="val">›</div></div>';
+  html += '</div>';
+
+  html += '<div class="h2">合规</div>';
+  html += '<div class="card"><div class="sub">· 未成年人不允许建立电子生命档案，注册环节已做年龄门槛核验<br>' +
+    '· 所有 AI 生成内容带显式标识，导出时保留水印<br>' +
+    '· 敏感个人信息单独同意、单独撤回、明示不出境<br>' +
+    '· 对外表述统一为「个人数字分身」，不使用「数字永生」「逝者复活」</div>' +
+    '<button class="btn-g" style="margin-top:12px" data-act="tab" data-id="life">返回生命页</button></div>';
+
+  html += '<div class="sub" style="text-align:center;margin:18px 0 6px;color:var(--dim2)">AIme v0.2.0 · MIT · 社区共建</div>';
+  html += '</div>';
+  return html;
+}
+
+/* ───────────── 主渲染 ───────────── */
+
+function render(){
+  renderTabs();
+  renderTop();
+  var map = { life:screenLife, forge:screenForge, chat:screenChat, world:screenWorld, me:screenMe };
+  document.getElementById("view").innerHTML = (map[state.tab] || screenLife)();
+  if (state.tab === "chat"){
+    setTimeout(function(){
+      var s = document.getElementById("stream");
+      if (s) s.scrollTop = s.scrollHeight;
+    }, 30);
+  }
+}
+
+function setTab(id){
+  state.tab = id;
+  save();
+  render();
+  document.getElementById("view").scrollTop = 0;
+}
+
+/* ───────────── 交互 ───────────── */
+
+document.addEventListener("click", function(e){
+  var el = e.target.closest("[data-act]");
+  if (!el) return;
+  var act = el.getAttribute("data-act");
+  var id = el.getAttribute("data-id");
+  var i = parseInt(el.getAttribute("data-i"), 10);
+
+  switch (act){
+    case "tab": setTab(id); break;
+
+    case "coins": setTab("me"); break;
+
+    case "toggleLayer":
+      state.expanded = (state.expanded === id ? "" : id);
+      save(); render(); break;
+
+    case "toggleField": {
+      var key = el.getAttribute("data-key");
+      var layerId = el.getAttribute("data-layer");
+      var fi = parseInt(el.getAttribute("data-i"), 10);
+      var L = LAYERS.filter(function(x){ return x.id === layerId; })[0];
+      if (state.done[key]){
+        delete state.done[key];
+        save(); render();
+      } else {
+        if (L.sensitive && !state.consent[L.sensitive] && fi > 0){
+          toast("需先授权" + (L.sensitive === "voice" ? "声纹" : "人脸与影像"));
+          return;
+        }
+        state.done[key] = 1;
+        save(); render();
+        toast("已确认 ·「" + L.fields[fi] + "」");
+      }
+      break;
+    }
+
+    case "gotoLayer":
+      state.tab = "forge"; state.expanded = id; save(); render();
+      document.getElementById("view").scrollTop = 0;
+      break;
+
+    case "gotoMe":
+      state.tab = "me"; save(); render();
+      setTimeout(function(){
+        var t = document.getElementById("consent");
+        if (t) t.scrollIntoView({ behavior:"smooth", block:"start" });
+      }, 60);
+      break;
+
+    case "upgradeImage": {
+      var s = IMAGE_STEPS[i];
+      if (i <= state.imageLv){ toast("当前已是 L" + IMAGE_STEPS[state.imageLv].lv + "，无需升级"); return; }
+      if (i !== state.imageLv + 1){ toast("需按顺序升级，先完成 L" + IMAGE_STEPS[state.imageLv + 1].lv); return; }
+      if (s.need === "never"){ toast("L1.8 需要专用采集设备，暂未开放"); return; }
+      if (s.need && !state.consent[s.need]){
+        toast("L" + s.lv + " 需先授权" + (s.need === "ct" ? "医学影像" : "人脸采集"));
+        return;
+      }
+      if (s.door){
+        openSheet('<h3>L' + s.lv + ' ' + s.name + '</h3>' +
+          '<div class="sub" style="margin-bottom:14px">该等级需要线下采集，无法在本应用内完成。</div>' +
+          '<div class="card tight"><div class="sub">· 就近采集点：武汉光谷 3 家<br>· 单次时长：15 分钟<br>· 当前排队：2 天<br>· 采集完成后模型自动回传，无需手动导入</div></div>' +
+          '<button class="btn-p" style="margin-top:12px" data-act="bookScan" data-i="' + i + '">预约采集（' + s.cost + ' 能量币）</button>' +
+          '<button class="btn-g" style="margin-top:8px" data-act="closeSheet">再想想</button>');
+        return;
+      }
+      if (!spend(s.cost, "形象升级 L" + s.lv)) return;
+      state.imageLv = i; save(); render();
+      toast("已升级 L" + s.lv + " · " + s.name);
+      break;
+    }
+
+    case "bookScan": {
+      var st = IMAGE_STEPS[i];
+      if (!spend(st.cost, "形象升级 L" + st.lv + "（到店采集）")) return;
+      state.imageLv = i; save(); closeSheet(); render();
+      toast("已预约 · 排队 2 天，采集完成后自动升级");
+      break;
+    }
+
+    case "upgradeVoice": {
+      var vs = VOICE_STEPS[i];
+      if (i <= state.voiceLv){ toast("当前已是 L" + VOICE_STEPS[state.voiceLv].lv + "，无需升级"); return; }
+      if (i !== state.voiceLv + 1){ toast("需按顺序升级"); return; }
+      if (vs.need && !state.consent[vs.need]){
+        openSheet('<h3>声纹授权</h3>' +
+          '<div class="sub" style="margin-bottom:14px">声纹属敏感个人信息。根据规定，需要你的<b>单独同意</b>，且可随时撤回。</div>' +
+          '<div class="card tight"><div class="sub">· 仅用于还原你的声线，不用于身份核验<br>· 不向第三方提供，明示不出境<br>· 撤回后相关声线立即删除，不可恢复</div></div>' +
+          '<button class="btn-p" style="margin-top:12px" data-act="grantVoice">同意并授权声纹</button>' +
+          '<button class="btn-g" style="margin-top:8px" data-act="closeSheet">暂不授权</button>');
+        return;
+      }
+      if (!spend(vs.cost, "声音升级 L" + vs.lv)) return;
+      state.voiceLv = i; save(); render();
+      toast("已升级 L" + vs.lv + " · " + vs.name);
+      break;
+    }
+
+    case "grantVoice":
+      state.consent.voice = true; save(); closeSheet(); render();
+      toast("声纹授权已生效，可随时在「我的」撤回");
+      break;
+
+    case "consent": {
+      if (state.consent[id]){
+        state.consent[id] = false;
+        if (id === "voice") state.voiceLv = 0;
+        if (id === "ct" && state.imageLv > 4) state.imageLv = 4;
+        save(); render();
+        toast("已撤回授权，相关数据已删除");
+      } else {
+        state.consent[id] = true; save(); render();
+        toast("已授权，仅用于画像铸造");
+      }
+      break;
+    }
+
+    case "openChat":
+      state.activePersona = id;
+      state.tab = "chat";
+      save(); render();
+      break;
+
+    case "persona":
+      state.activePersona = id;
+      save(); render();
+      break;
+
+    case "send": {
+      var inp = document.getElementById("inp");
+      if (!inp) return;
+      var txt = inp.value.trim();
+      if (!txt) return;
+      sendMessage(txt);
+      break;
+    }
+
+    case "flag": {
+      var pid = state.activePersona;
+      var arr = state.chat[pid] || [];
+      var idx = parseInt(el.getAttribute("data-i"), 10);
+      if (idx < 0){
+        state.greetFlag = state.greetFlag || {};
+        if (!state.greetFlag[pid]){ state.greetFlag[pid] = true; state.diffs += 1; }
+        save(); render();
+        toast("记下这句不像我 · 已进纠偏语料池");
+        return;
+      }
+      var m = arr[idx];
+      if (m && m.role === "aime" && !m.flagged){
+        m.flagged = true;
+        state.diffs += 1;
+        save(); render();
+        toast("差分已记录 → 纠偏语料池（共 " + state.diffs + " 条）");
+      }
+      break;
+    }
+
+    case "labor": {
+      var lb = LABORS.filter(function(x){ return x.id === id; })[0];
+      var last = state.labor[lb.id] || 0;
+      if (Date.now() - last < lb.cd * 1000){ toast("结算冷却中"); return; }
+      state.labor[lb.id] = Date.now();
+      earn(lb.coin, "虚拟世界 · " + lb.name);
+      state.evolution = Math.min(99, state.evolution + 1);
+      save(); render();
+      toast("+" + lb.coin + " 能量币 · " + lb.name);
+      break;
+    }
+
+    case "enterWorld": {
+      var w = WORLDS.filter(function(x){ return x.id === id; })[0];
+      if (state.worldsEntered.indexOf(id) < 0){ state.worldsEntered.push(id); save(); }
+      openSheet('<h3>' + w.name + '</h3>' +
+        '<div class="sub" style="margin-bottom:12px">' + w.desc + '</div>' +
+        '<div class="card tight"><div class="k">世界参数</div>' +
+        '<div class="laws">' + w.laws.map(function(l){ return '<span class="tag lock">' + l + '</span>'; }).join("") + '</div>' +
+        '<div class="sub" style="margin-top:10px">种子 ' + w.seed + ' · 已生成 ' + (1200 + w.name.length * 137) + ' 个电子生命</div></div>' +
+        '<div class="card tight" style="margin-top:10px"><div class="sub">AIme 进入后与其它电子生命交互，相当于动态输入变量与问题，思考、应对（含发现、发明、创造），演化结果反哺现实世界。</div></div>' +
+        '<button class="btn-p" style="margin-top:10px" data-act="laborRun" data-id="' + w.id + '">开始一次探索（+12 能量币）</button>' +
+        '<button class="btn-g" style="margin-top:8px" data-act="closeSheet">返回</button>');
+      break;
+    }
+
+    case "laborRun": {
+      var wn = (WORLDS.filter(function(x){ return x.id === id; })[0] || {}).name;
+      earn(12, "探索 · " + wn);
+      state.evolution = Math.min(99, state.evolution + 2);
+      save(); closeSheet(); render();
+      toast("探索完成 · +12 能量币，演化 +2%");
+      break;
+    }
+
+    case "topic":
+      openSheet('<h3>' + TOPICS[i].t + '</h3>' +
+        '<div class="sub" style="margin-bottom:12px">' + TOPICS[i].p + '</div>' +
+        '<div class="card tight"><div class="sub">这是一个思想风暴场：全世界最优秀的人脑、你的 AIme、各类 AI 模型在同一议题下交锋。有价值的推论会被提取为公共知识，进入虚拟世界演化参数。</div></div>' +
+        '<textarea placeholder="你的观点…"></textarea>' +
+        '<button class="btn-p" style="margin-top:10px" data-act="postTopic">发布（不消耗能量币）</button>');
+      break;
+
+    case "postTopic":
+      closeSheet(); toast("已发布，AIme 会在 30 分钟内给出第一轮回应");
+      break;
+
+    case "brand":
+      openSheet('<h3>创建生命化对象</h3>' +
+        '<div class="sub" style="margin-bottom:12px">输入公司、法人、品牌数据，系统将其拟人化；动物、植物、星球、学派同样支持。</div>' +
+        '<textarea placeholder="例如：品牌名 + 历史沿革、产品线、创始人性格…"></textarea>' +
+        '<div class="sub" style="margin-top:10px">生命化消耗 300 能量币，含 8 维度人格设定 + 首批对话语料。</div>' +
+        '<button class="btn-p" style="margin-top:10px" data-act="brandGo">生命化（300 能量币）</button>');
+      break;
+
+    case "brandGo":
+      if (!spend(300, "万物生命化 · 新建对象")) return;
+      closeSheet(); render(); toast("已创建 · 对象进入铸造队列");
+      break;
+
+    case "toggleStorage":
+      state.storage = state.storage === "local" ? "cloud" : "local";
+      save(); render();
+      toast(state.storage === "local" ? "已切换为仅本机存储" : "已切换为云端端到端加密");
+      break;
+
+    case "exportData": {
+      var out = {
+        version: 3, exportedAt: new Date().toISOString(), totalPct: totalPct(),
+        layers: LAYERS.map(function(L){
+          return { id:L.id, name:L.name, pct:layerPct(L),
+            confirmed:L.fields.filter(function(_, i){ return !!state.done[L.id + ":" + i]; }) };
+        }),
+        coins: state.coins, diffs: state.diffs, calibRounds: state.calibRounds
+      };
+      openSheet('<h3>画像导出</h3><div class="sub" style="margin-bottom:6px">含 ' + doneCount() + ' 个已确认维度，可交给开发者或导入其它设备。</div>' +
+        '<textarea readonly style="min-height:200px;font-size:11.5px;font-family:ui-monospace,monospace">' + esc(JSON.stringify(out, null, 2)) + '</textarea>' +
+        '<button class="btn-g" style="margin-top:10px" data-act="closeSheet">关闭</button>');
+      break;
+    }
+
+    case "wipe":
+      openSheet('<h3 style="color:#FF8F9C">清除全部数据</h3>' +
+        '<div class="sub" style="margin:8px 0 14px">这会删除八层画像、对话记录、纠偏语料池与能量币流水，且不可恢复。</div>' +
+        '<button class="btn-p" style="background:linear-gradient(135deg,#FF6B7A,#D93F52)" data-act="wipeGo">确认清除</button>' +
+        '<button class="btn-g" style="margin-top:8px" data-act="closeSheet">取消</button>');
+      break;
+
+    case "wipeGo":
+      state.done = {};
+      state.ledger = [];
+      state.chat = { past:[], now:[], future:[], yangming:[], einstein:[] };
+      state.diffs = 0; state.calibRounds = 0; state.imageLv = 0; state.voiceLv = 0;
+      state.coins = 0; state.evolution = 0; state.worldsEntered = []; state.greetFlag = {};
+      state.tab = "life";
+      save(); closeSheet(); render();
+      toast("数据已清除，可从零重新铸造");
+      break;
+
+    case "toastSoon": toast("该名人思想尚未录入，可提交语料包加速"); break;
+    case "closeSheet": closeSheet(); break;
+  }
 });
 
-document.getElementById('continue').addEventListener('click', () => {
-  toast('已进入「反思与叙事」采集 · 首问：你怎么解释 2019 年那次没走');
+/* 发送消息 */
+function sendMessage(txt){
+  var pid = state.activePersona;
+  var P = PERSONAS[pid] || PERSONAS.now;
+  var msgs = state.chat[pid] || (state.chat[pid] = []);
+  msgs.push({ role:"me", text:txt, ts:Date.now() });
+  save();
+
+  var stream = document.getElementById("stream");
+  if (!stream) return;
+
+  var wrap = document.createElement("div");
+  wrap.className = "msg me";
+  wrap.innerHTML = '<div class="who">我</div><div class="bubble">' + esc(txt) + '</div>';
+  stream.appendChild(wrap);
+
+  var inp = document.getElementById("inp");
+  if (inp) inp.value = "";
+
+  var ty = document.createElement("div");
+  ty.className = "msg aime";
+  ty.id = "typing";
+  ty.innerHTML = '<div class="who">' + P.label + '</div><div class="typing"><i></i><i></i><i></i></div>';
+  stream.appendChild(ty);
+  stream.scrollTop = stream.scrollHeight;
+
+  setTimeout(function(){
+    var t = document.getElementById("typing");
+    if (t) t.remove();
+
+    var reply = pickReply(pid, txt);
+    msgs.push({ role:"aime", text:reply, flagged:false, ts:Date.now() });
+    state.calibRounds += 1;
+    save();
+
+    var idx = msgs.length - 1;
+    var s2 = document.getElementById("stream");
+    if (s2){
+      s2.insertAdjacentHTML("beforeend", msgHTML(msgs[idx], idx, P));
+      s2.scrollTop = s2.scrollHeight;
+    }
+    renderTop();
+  }, 850);
+}
+
+function pickReply(pid, txt){
+  var P = PERSONAS[pid] || PERSONAS.now;
+  var pool = P.replies;
+  var KEY = ["工作","辞职","父母","钱","累","选择","后悔","怕","孩子","时间"];
+  for (var i = 0; i < KEY.length; i++){
+    if (txt.indexOf(KEY[i]) >= 0){
+      return pool[(i + 2) % pool.length];
+    }
+  }
+  var n = txt.length + state.chat[pid].length * 7;
+  return pool[n % pool.length];
+}
+
+/* 弹层 */
+function openSheet(inner){
+  document.getElementById("sheetBody").innerHTML =
+    '<div class="grab"></div><button class="close" data-act="closeSheet">✕</button>' + inner;
+  document.getElementById("sheet").classList.add("open");
+}
+function closeSheet(){
+  document.getElementById("sheet").classList.remove("open");
+}
+
+document.addEventListener("keydown", function(e){
+  if (e.key === "Enter" && e.target && e.target.id === "inp"){
+    e.preventDefault();
+    var v = e.target.value.trim();
+    if (v) sendMessage(v);
+  }
 });
 
-/* ---------- 时间 ---------- */
-(function(){
-  const d = new Date();
-  document.getElementById('clock').textContent =
-    String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
-})();
+/* 启动 */
+render();
+
+/* 劳动冷却刷新 */
+setInterval(function(){
+  if (state.tab !== "world") return;
+  var btns = document.querySelectorAll('[data-act="labor"]');
+  if (!btns.length) return;
+  LABORS.forEach(function(l, i){
+    var b = btns[i];
+    if (!b) return;
+    var left = Math.max(0, Math.ceil((l.cd * 1000 - (Date.now() - (state.labor[l.id] || 0))) / 1000));
+    if (left > 0){ b.disabled = true; b.textContent = left + "s"; }
+    else if (b.disabled){ b.disabled = false; b.textContent = "+" + l.coin; }
+  });
+}, 1000);
 </script>
 </body>
 </html>
