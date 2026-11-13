@@ -262,6 +262,27 @@
     border-radius:7px;padding:3px 9px;cursor:pointer;font-family:inherit;flex:0 0 auto}
   .used{font-size:10.5px;color:var(--acc2);opacity:.85;margin-top:5px;display:flex;align-items:center;gap:4px}
   .used::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor;flex:0 0 auto}
+  /* 盲测 */
+  .ask{font-size:13.5px;color:var(--txt);background:rgba(255,255,255,.04);border:1px solid var(--line);
+    border-radius:11px;padding:11px 13px;margin-bottom:14px;line-height:1.55}
+  .ask .who3{font-size:10.5px;color:var(--dim2);letter-spacing:.06em;display:block;margin-bottom:4px}
+  .ab{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+  .ab .opt{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:12px 12px 14px;
+    cursor:pointer;transition:.16s;min-height:104px;display:flex;flex-direction:column}
+  .ab .opt:active{transform:scale(.985)}
+  .ab .opt.sel{border-color:rgba(139,124,255,.6);background:rgba(139,124,255,.1)}
+  .ab .opt .tagx{font-size:10px;letter-spacing:.14em;color:var(--dim2);font-weight:700;margin-bottom:8px}
+  .ab .opt .tx{font-size:13px;line-height:1.6;color:#DEE0E9;flex:1}
+  .ab .opt .rev{font-size:10.5px;margin-top:8px;color:var(--acc2)}
+  .ab .opt .rev.no{color:var(--dim2)}
+  .blindbox{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:13px;margin-bottom:11px}
+  .blindbox .big{font-size:30px;font-weight:700;color:var(--acc);line-height:1.1;font-variant-numeric:tabular-nums}
+  .blindbox .big small{font-size:13px;color:var(--dim);font-weight:400;margin-left:4px}
+  .bar{height:5px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:9px}
+  .bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--acc),var(--acc2))}
+  .logrow{display:flex;gap:9px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--line);font-size:12px}
+  .logrow:last-child{border-bottom:0}
+  .logrow .mark{flex:0 0 auto;width:16px;text-align:center;font-weight:700}
 </style>
 </head>
 <body>
@@ -465,7 +486,8 @@ function defaultState(){
     worldsEntered:["mirror","abyss"],
     evolution: 37,
     llm: defaultLLM(),
-    corrections: []          // 纠偏语料池：结构化差分，见 commitCorrection()
+    corrections: [],         // 纠偏语料池：结构化差分，见 commitCorrection()
+    blind: []                // 盲测记录：见 docs/07-盲测.md
   };
 }
 
@@ -482,6 +504,7 @@ if (!state.chat.yangming) state.chat.yangming = [];
 if (!state.chat.einstein) state.chat.einstein = [];
 /* 兼容旧存档：差分从纯计数升级为结构化语料 */
 if (!Array.isArray(state.corrections)) state.corrections = [];
+if (!Array.isArray(state.blind)) state.blind = [];
 if (typeof state.diffs !== "number") state.diffs = state.corrections.length;
 
 function save(){ try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e){} }
@@ -750,8 +773,10 @@ function chatUI(pid){
     '<span class="model-chip ' + (llmReady() ? "" : "local") + '" data-act="openLLM"><i></i>' +
     (llmReady() ? esc(state.llm.model || modelLabel()) : "本地模拟 · 点击接入模型") + '</span></div>' +
     '<div class="between" style="margin-top:6px">' +
-    '<span class="sub">' + P.sub + ' · 点「不像我」教它说话</span>' +
-    '<button class="act" data-act="openPool" style="flex:0 0 auto">语料池 ' + corrN0 + '</button></div></div>';
+    '<span class="sub">' + P.sub + '</span>' +
+    '<span style="display:flex;gap:6px;flex:0 0 auto">' +
+    '<button class="act" data-act="openPool">语料池 ' + corrN0 + '</button>' +
+    '<button class="act" data-act="blindStart">盲测</button></span></div></div>';
 
   if (!msgs.length){
     var gf = state.greetFlag && state.greetFlag[pid];
@@ -848,6 +873,7 @@ function screenWorld(){
 
 function screenMe(){
   var html = '<div class="screen">';
+  var bst = blindStats();
 
   html += '<div class="card" style="background:linear-gradient(140deg,rgba(139,124,255,.14),rgba(63,224,192,.07)),var(--card)">' +
     '<div class="row"><div style="width:46px;height:46px;border-radius:50%;flex:0 0 auto;background:radial-gradient(circle at 36% 30%,#fff,#B9AEFF 30%,#6A58F0 70%);box-shadow:0 0 20px rgba(139,124,255,.5)"></div>' +
@@ -890,6 +916,14 @@ function screenMe(){
       : "还没有语料 · 让模型学会你的说法") +
     '</div></div>' +
     '<div class="val">' + (state.corrections || []).length + ' 条 ›</div></div>';
+  html += '<div class="list-row" data-act="blindStart">' +
+    '<div><div class="lbl">像不像盲测</div>' +
+    '<div class="sub" style="font-size:11.5px">' +
+    (bst.n
+      ? ("已测 " + bst.n + " 题 · " + bst.rate + "% 选中带纠偏那侧")
+      : "A/B 对照，测纠偏到底有没有用") +
+    '</div></div>' +
+    '<div class="val">' + (bst.n ? bst.rate + '% ›' : "开始 ›") + '</div></div>';
   html += '<div class="list-row" data-act="openLLM">' +
     '<div><div class="lbl">接入大模型</div>' +
     '<div class="sub" style="font-size:11.5px">' +
@@ -914,7 +948,7 @@ function screenMe(){
     '· 对外表述统一为「个人数字分身」，不使用「数字永生」「逝者复活」</div>' +
     '<button class="btn-g" style="margin-top:12px" data-act="tab" data-id="life">返回生命页</button></div>';
 
-  html += '<div class="sub" style="text-align:center;margin:18px 0 6px;color:var(--dim2)">AIme v0.4.0 · MIT · 社区共建</div>';
+  html += '<div class="sub" style="text-align:center;margin:18px 0 6px;color:var(--dim2)">AIme v0.5.0 · MIT · 社区共建</div>';
   html += '</div>';
   return html;
 }
@@ -1145,6 +1179,38 @@ document.addEventListener("click", function(e){
 
     case "openPool": openPool(); break;
 
+    case "blindStart": startBlind(state.activePersona); break;
+    case "blindPick": blindPick(el.getAttribute("data-side")); break;
+    case "blindNone": blindPick("none"); break;
+    case "blindNext": {
+      if (blindSession){ blindSession.idx += 1; blindQuestion(); }
+      break;
+    }
+    case "blindSkip": {
+      if (blindSession){ blindSession.idx += 1; blindQuestion(); }
+      break;
+    }
+    case "blindQuit": {
+      blindSession = null;
+      if ((state.blind || []).length) blindSummary();
+      else closeSheet();
+      break;
+    }
+    case "blindAgain": startBlind(state.activePersona); break;
+    case "blindReset": {
+      state.blind = [];
+      save();
+      closeSheet();
+      toast("盲测记录已清空 · 语料不受影响");
+      break;
+    }
+    case "quitBlindToChat": {
+      blindSession = null;
+      state.tab = "chat";
+      closeSheet(); render();
+      break;
+    }
+
     case "retest": {
       var rc = state.corrections.filter(function(c){ return c.id === el.getAttribute("data-id"); })[0];
       if (!rc){ break; }
@@ -1282,6 +1348,7 @@ document.addEventListener("click", function(e){
       state.chat = { past:[], now:[], future:[], yangming:[], einstein:[] };
       state.diffs = 0; state.calibRounds = 0; state.imageLv = 0; state.voiceLv = 0;
       state.corrections = [];
+      state.blind = [];
       state.coins = 0; state.evolution = 0; state.worldsEntered = []; state.greetFlag = {};
       state.tab = "life";
       state.llm = keepLLM;
@@ -1563,6 +1630,279 @@ function openPool(){
   openSheet(h);
 }
 
+/* ───────────── 像不像盲测 ─────────────
+   A/B 唯一变量是「有没有注入纠偏语料」，其余全部相同：同问题、同模型、同温度。
+   左右随机，选完才揭示。这样命中率才等于「纠偏的有效性」。
+*/
+
+var BLIND_ASKS = ["我最近特别累", "我在犹豫要不要换个城市", "家里人不太理解我在做的事"];
+
+var blindSession = null;
+
+function blindPool(pid){
+  var msgs = state.chat[pid] || [];
+  var asks = [];
+  for (var i = msgs.length - 1; i >= 1 && asks.length < 6; i--){
+    if (msgs[i].role === "aime" && msgs[i - 1] && msgs[i - 1].role === "me"){
+      var q = String(msgs[i - 1].text || "").trim();
+      if (q && asks.indexOf(q) < 0) asks.push(q);
+    }
+  }
+  return asks.reverse();
+}
+
+function startBlind(pid){
+  pid = pid || state.activePersona;
+  var asks = blindPool(pid);
+  // 历史不足时用预设题补足，保证至少 3 题
+  BLIND_ASKS.forEach(function(q){ if (asks.length < 3 && asks.indexOf(q) < 0) asks.push(q); });
+  if (!asks.length){ toast("还没有可测的对话"); return; }
+
+  blindSession = {
+    pid: pid,
+    queue: asks.slice(0, 5),
+    idx: 0,
+    cur: null,
+    mode: llmReady() ? "llm" : "demo"
+  };
+  blindQuestion();
+}
+
+function blindQuestion(){
+  var s = blindSession;
+  if (!s) return;
+  if (s.idx >= s.queue.length){ blindSummary(); return; }
+
+  var ask = s.queue[s.idx];
+  s.cur = { ask: ask, loading: true };
+  openSheet('<h3>像不像盲测</h3>' +
+    '<div class="sub" style="margin-bottom:14px">第 ' + (s.idx + 1) + ' / ' + s.queue.length + ' 题 · 两边同一句话、同一个模型，只有一处配置不同。左右顺序每次随机。</div>' +
+    '<div class="ask"><span class="who3">你问</span>' + esc(ask) + '</div>' +
+    '<div class="sub" style="text-align:center;padding:22px 0">正在生成两边回复…<br>' +
+    (s.mode === "llm" ? '<span style="font-size:11px;color:var(--dim2)">要跑两次请求，约 3—8 秒</span>' :
+      '<span style="font-size:11px;color:var(--dim2)">演示模式：用内置台词池模拟</span>') + '</div>' +
+    '<button class="btn-g" data-act="blindQuit">退出盲测</button>');
+
+  if (s.mode === "llm"){
+    var a = [{ role:"system", content: buildSystemPrompt(s.pid, false) }, { role:"user", content: ask }];
+    var b = [{ role:"system", content: buildSystemPrompt(s.pid, true) }, { role:"user", content: ask }];
+    Promise.all([complete(a), complete(b)]).then(function(r){
+      if (!blindSession || blindSession.idx !== s.idx) return;
+      var withC = r[0], without = r[1];
+      if (!withC || !without){
+        s.cur = { ask: ask, error: "模型返回空内容，换一题或检查模型配置", loading: false };
+        blindRender(); return;
+      }
+      var flip = Math.random() < 0.5;
+      s.cur = {
+        ask: ask, loading: false,
+        left:  flip ? { text: withC, corr: true } : { text: without, corr: false },
+        right: flip ? { text: without, corr: false } : { text: withC, corr: true }
+      };
+      blindRender();
+    }).catch(function(e){
+      if (!blindSession) return;
+      s.cur = { ask: ask, error: e.message, loading: false };
+      blindRender();
+    });
+  } else {
+    // 演示模式：A 取「已过滤」的池（模拟学会之后），B 取被标记过的句子（模拟学会之前）
+    var P = PERSONAS[s.pid] || PERSONAS.now;
+    var banned = (state.corrections || []).map(function(c){ return c.rejected; });
+    var learned = P.replies.filter(function(x){ return banned.indexOf(x) < 0; });
+    var old = P.replies.filter(function(x){ return banned.indexOf(x) >= 0; });
+
+    setTimeout(function(){
+      if (!blindSession || blindSession.idx !== s.idx) return;
+      if (!old.length || learned.length === P.replies.length){
+        s.cur = { ask: ask, needCorr: true, loading: false };
+        blindRender(); return;
+      }
+      var wi = learned[Math.floor(Math.random() * learned.length)];
+      var wo = old[Math.floor(Math.random() * old.length)];
+      var fl = Math.random() < 0.5;
+      s.cur = {
+        ask: ask, loading: false,
+        left:  fl ? { text: wi, corr: true } : { text: wo, corr: false },
+        right: fl ? { text: wo, corr: false } : { text: wi, corr: true }
+      };
+      blindRender();
+    }, 500);
+  }
+}
+
+function blindRender(){
+  var s = blindSession, c = s && s.cur;
+  if (!s || !c) return;
+
+  var h = '<h3>像不像盲测</h3>';
+
+  if (c.error){
+    openSheet(h + '<div class="sub" style="margin-bottom:14px">第 ' + (s.idx + 1) + ' / ' + s.queue.length + ' 题</div>' +
+      '<div class="ask"><span class="who3">你问</span>' + esc(c.ask) + '</div>' +
+      '<div class="note" style="margin-bottom:14px"><b>生成失败</b><br>' + esc(c.error) +
+      '<br><br>盲测需要真实模型（要生成两条不同回复）。本地台词池只能做演示。</div>' +
+      '<button class="btn-p" data-act="openLLM">去接入模型</button>' +
+      '<button class="btn-g" style="margin-top:8px" data-act="blindSkip">跳过这题</button>' +
+      '<button class="btn-g" style="margin-top:8px" data-act="blindQuit">退出盲测</button>');
+    return;
+  }
+
+  if (c.needCorr){
+    openSheet(h + '<div class="ask"><span class="who3">你问</span>' + esc(c.ask) + '</div>' +
+      '<div class="note" style="margin-bottom:14px">演示模式靠「被标记过的句子」来区分两边。你还没标记过任何句子，所以两边会一样，测不出东西。<br><br>' +
+      '先去对话里点两次「不像我」，或者直接接入真实模型做正式盲测。</div>' +
+      '<button class="btn-p" data-act="quitBlindToChat">去标记几句</button>' +
+      '<button class="btn-g" style="margin-top:8px" data-act="openLLM">接入模型做正式盲测</button>' +
+      '<button class="btn-g" style="margin-top:8px" data-act="blindQuit">退出</button>');
+    return;
+  }
+
+  var picked = c.picked;
+  h += '<div class="sub" style="margin-bottom:14px">第 ' + (s.idx + 1) + ' / ' + s.queue.length + ' 题 · ' +
+    (picked ? "已记录，下面是揭示" : "哪边更像你自己？凭直觉选，别猜") + '</div>';
+  h += '<div class="ask"><span class="who3">你问</span>' + esc(c.ask) + '</div>';
+
+  h += '<div class="ab">';
+  ["left", "right"].forEach(function(side){
+    var o = c[side];
+    var isSel = picked === side;
+    h += '<div class="opt ' + (isSel ? "sel" : "") + '" ' +
+      (picked ? '' : 'data-act="blindPick" data-side="' + side + '"') + '>' +
+      '<div class="tagx">' + (side === "left" ? "A" : "B") + '</div>' +
+      '<div class="tx">' + esc(o.text) + '</div>' +
+      (picked ? '<div class="rev ' + (o.corr ? "" : "no") + '">' + (o.corr ? "带纠偏" : "未带纠偏") + '</div>' : '') +
+      '</div>';
+  });
+  h += '</div>';
+
+  if (!picked){
+    h += '<button class="btn-g" data-act="blindNone">都不像</button>';
+    h += '<button class="btn-g" style="margin-top:8px" data-act="blindQuit">退出盲测</button>';
+  } else {
+    var hitTxt;
+    if (picked === "none") hitTxt = "这题两边都没抓住。已记录，不计入胜率。";
+    else {
+      var chosen = c[picked];
+      hitTxt = chosen.corr
+        ? "你选了带纠偏的那边 ✓ 纠偏这次起作用了"
+        : "你选了未带纠偏的那边 ✗ 纠偏这次没帮上忙";
+    }
+    h += '<div class="note" style="margin-bottom:12px">' + esc(hitTxt) + '</div>' +
+      '<button class="btn-p" data-act="blindNext">' +
+      (s.idx + 1 >= s.queue.length ? "看本轮结果" : "下一题 →") + '</button>' +
+      '<button class="btn-g" style="margin-top:8px" data-act="blindQuit">退出盲测</button>';
+  }
+
+  openSheet(h);
+}
+
+function blindPick(side){
+  var s = blindSession, c = s && s.cur;
+  if (!s || !c || c.picked || !c.left) return;
+
+  var hit = false;
+  if (side === "left" || side === "right") hit = !!c[side].corr;
+
+  c.picked = side;
+  state.blind.push({
+    id: "b" + Date.now().toString(36) + Math.floor(Math.random() * 90 + 10),
+    pid: s.pid, ask: c.ask,
+    left: { text: c.left.text, corr: c.left.corr },
+    right: { text: c.right.text, corr: c.right.corr },
+    pick: side, hit: hit, mode: s.mode, ts: Date.now()
+  });
+  save();
+  blindRender();
+}
+
+/* 二项尾概率：假设纯随机（p=0.5），至少命中 k 次的概率 */
+function binomTail(n, k){
+  if (!n) return 1;
+  var sum = 0;
+  for (var i = k; i <= n; i++){
+    var c = 1;
+    for (var j = 0; j < i; j++) c = c * (n - j) / (j + 1);
+    sum += c;
+  }
+  return sum / Math.pow(2, n);
+}
+
+function blindStats(){
+  var all = state.blind || [];
+  var llm = all.filter(function(x){ return x.mode === "llm"; });
+  var decided = llm.filter(function(x){ return x.pick === "left" || x.pick === "right"; });
+  var hit = decided.filter(function(x){ return x.hit; }).length;
+  var n = decided.length;
+  return {
+    total: all.length,
+    n: n,
+    hit: hit,
+    rate: n ? Math.round(hit / n * 100) : 0,
+    tail: n ? binomTail(n, hit) : 1,
+    demo: all.length - llm.length
+  };
+}
+
+function blindSummary(){
+  var st = blindStats();
+  var h = '<h3>本轮结果</h3>';
+
+  if (!st.n && !st.demo){
+    openSheet(h + '<div class="sub">还没有有效样本。</div>' +
+      '<button class="btn-g" style="margin-top:12px" data-act="closeSheet">关闭</button>');
+    return;
+  }
+
+  if (st.n){
+    var enough = st.n >= 8;
+    h += '<div class="blindbox">' +
+      '<div class="big">' + st.rate + '<small>% 选了带纠偏那边</small></div>' +
+      '<div class="bar"><i style="width:' + st.rate + '%"></i></div>' +
+      '<div class="sub" style="margin-top:10px">' + st.n + ' 题里命中 ' + st.hit + ' 次 · 纯随机猜的中位期望是 50%</div>' +
+      '</div>';
+
+    h += '<div class="blindbox">' +
+      '<div class="k" style="margin-bottom:6px">这个结果有多可信</div>' +
+      '<div class="sub" style="line-height:1.7">' +
+      (st.tail < 0.05
+        ? '如果纠偏完全没用（纯随机），连续拿到这个或更好结果的可能性约 <b style="color:#8DEFD9">' +
+          (st.tail * 100).toFixed(1) + '%</b>。这个差异不像碰巧。'
+        : '如果纠偏完全没用，拿到这个结果的可能性约 <b style="color:#FFCE97">' +
+          (st.tail * 100).toFixed(1) + '%</b>——还在随机波动范围内，不能下结论。') +
+      (enough ? '' : '<br><br><b style="color:#FFCE97">样本只有 ' + st.n + ' 题，太少。</b>至少 8 题才开始有参考价值，20 题以上比较稳。') +
+      '</div></div>';
+  }
+
+  if (st.demo){
+    h += '<div class="note" style="margin-bottom:12px">另有 ' + st.demo + ' 条演示模式记录（用内置台词池模拟，<b>不计入胜率</b>）。' +
+      '正式盲测需要接入真实模型。</div>';
+  }
+
+  // 明细
+  var recent = (state.blind || []).slice(-6).reverse();
+  if (recent.length){
+    h += '<div class="k">最近几题</div><div class="card" style="padding:4px 13px">';
+    recent.forEach(function(x){
+      var mark = x.pick === "none" ? "—" : (x.hit ? "✓" : "✗");
+      var color = x.pick === "none" ? "var(--dim2)" : (x.hit ? "#8DEFD9" : "#FF8F9C");
+      h += '<div class="logrow"><div class="mark" style="color:' + color + '">' + mark + '</div>' +
+        '<div style="flex:1"><div style="color:var(--dim);line-height:1.5">' + esc(x.ask) + '</div>' +
+        '<div class="sub" style="font-size:10.5px;margin-top:2px">' +
+        (x.mode === "llm" ? "真实模型" : "演示") + ' · ' +
+        (x.pick === "none" ? "两边都不像" : (x.hit ? "选中带纠偏" : "选中未带纠偏")) +
+        '</div></div></div>';
+    });
+    h += '</div>';
+  }
+
+  h += '<div class="sub" style="margin:12px 0">盲测只告诉你「纠偏有没有用」。它不评价画像本身准不准——那个要靠更长的观察。</div>';
+  h += '<button class="btn-p" data-act="blindAgain">再测一轮</button>' +
+    '<button class="btn-g" style="margin-top:8px" data-act="blindReset">清空盲测记录</button>' +
+    '<button class="btn-g" style="margin-top:8px" data-act="closeSheet">关闭</button>';
+  openSheet(h);
+}
+
 /* 发送消息 */
 function sendMessage(txt){
   var pid = state.activePersona;
@@ -1716,8 +2056,8 @@ function authHeaders(){
 /* 把八层画像 + 纠偏语料压成系统提示词 —— 这是「只像我」的关键 */
 var lastCorrCount = 0;
 
-function buildSystemPrompt(pid){
-  var corr = correctionContext(pid);
+function buildSystemPrompt(pid, skipCorr){
+  var corr = skipCorr ? { text:"", count:0 } : correctionContext(pid);
   lastCorrCount = corr.count;
   var slot = "";
 
@@ -1828,6 +2168,47 @@ function streamChat(messages, onDelta, onDone, onError){
       }
       onError(m);
     });
+}
+
+/* 非流式一次性调用：盲测要并排拿两条完整回复，流式没有意义 */
+function complete(messages, opts){
+  opts = opts || {};
+  return new Promise(function(resolve, reject){
+    var body = {
+      model: state.llm.model,
+      messages: messages,
+      temperature: (typeof opts.temp === "number") ? opts.temp
+        : (typeof state.llm.temp === "number" ? state.llm.temp : 0.85),
+      stream: false,
+      max_tokens: opts.maxTokens || 200
+    };
+    var ctrl = (typeof AbortController !== "undefined") ? new AbortController() : null;
+    var timer = setTimeout(function(){ if (ctrl) ctrl.abort(); }, 45000);
+
+    fetch(endpoint(), {
+      method:"POST", headers: authHeaders(), body: JSON.stringify(body),
+      signal: ctrl ? ctrl.signal : undefined
+    }).then(function(resp){
+      if (!resp.ok){
+        return resp.text().then(function(t){
+          var m = t.slice(0, 200);
+          try { m = (JSON.parse(t).error || {}).message || m; } catch (e){}
+          throw new Error("HTTP " + resp.status + "：" + m);
+        });
+      }
+      return resp.json();
+    }).then(function(j){
+      clearTimeout(timer);
+      var txt = (((j.choices || [])[0] || {}).message || {}).content || "";
+      resolve(String(txt).trim());
+    }).catch(function(err){
+      clearTimeout(timer);
+      var m = err && err.message ? err.message : String(err);
+      if (/abort/i.test(m)) m = "请求超时（45 秒）";
+      if (/Failed to fetch|NetworkError|Load failed/i.test(m)) m = "跨域被拦截（CORS）";
+      reject(new Error(m));
+    });
+  });
 }
 
 /* ───────────── 弹层 ───────────── */
