@@ -23,18 +23,19 @@ git checkout -b feat/your-feature   # 分支命名：feat/xxx | fix/xxx | docs/x
 ## 目录约定
 
 ```
-prototype/    纯 HTML 可交互原型（零依赖，浏览器直接打开）
-docs/         设计蓝图、PRD、路线图、合规
+docs/         设计蓝图、PRD、路线图、合规 + index.html 交互原型（也是 Pages 站点根目录）
 miniprogram/  小程序工程（M1 建立）
 server/       服务端与 LLM 中转（M1 建立）
 .github/      Issue 模板与工作流
 ```
 
+在线原型：https://egmis.github.io/AIme/
+
 ## 非代码贡献
 
 同样有效且欢迎：
 
-- **体验反馈**：试用 prototype/index.html 后提 Issue，带 `feedback` 标签
+- **体验反馈**：试用 docs/index.html（或在线原型）后提 Issue，带 `feedback` 标签
 - **文档**：校对、翻译（英文版 README 是当前缺口）
 - **量表选型**：心理学背景的伙伴参与性格测评工具的选型讨论
 - **合规审查**：法律背景伙伴审阅 docs/04
