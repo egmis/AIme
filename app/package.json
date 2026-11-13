@@ -1,6 +1,6 @@
 {
   "name": "aime-app",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": true,
   "description": "AIme 安卓壳（Capacitor），把 docs/index.html 打成 APK",
   "scripts": {
