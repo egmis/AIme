@@ -948,7 +948,7 @@ function screenMe(){
     '· 对外表述统一为「个人数字分身」，不使用「数字永生」「逝者复活」</div>' +
     '<button class="btn-g" style="margin-top:12px" data-act="tab" data-id="life">返回生命页</button></div>';
 
-  html += '<div class="sub" style="text-align:center;margin:18px 0 6px;color:var(--dim2)">AIme v0.6.0 · MIT · 社区共建</div>';
+  html += '<div class="sub" style="text-align:center;margin:18px 0 6px;color:var(--dim2)">AIme v0.7.0 · MIT · 社区共建</div>';
   html += '</div>';
   return html;
 }
@@ -1578,31 +1578,75 @@ function correctionContext(pid){
 /* 「别人」的纠偏语料 —— 只用于等长对照。
    实验逻辑：A 侧 = 你的语料，B 侧 = 另一个人的同长度语料。
    两边提示词几乎一样长、结构一模一样，唯一差别是「这些话是谁说的」。
-   如果 A 仍然赢，说明起作用的是语料的归属，不是提示词变长了。 */
-var OTHER_CORPUS = {
-  pos: [
-    { ask:"我最近有点撑不住", rejected:"要注意休息，身体是革命的本钱。", corrected:"先把手上的事列出来，一件件划掉，别让它们堆着。" },
-    { ask:"要不要换工作", rejected:"建议综合评估发展空间与薪酬水平。", corrected:"看你现在最缺的是钱、是成长，还是喘口气。缺什么先补什么。" },
-    { ask:"家里人不支持我", rejected:"家人的意见值得参考，多沟通会有帮助。", corrected:"他们担心的是风险，你要给的是底线方案，不是讲道理。" },
-    { ask:"我怕做不好", rejected:"相信自己，你一定可以的。", corrected:"怕就对了，说明这件事对你有分量。先做最小的一步。" },
-    { ask:"这件事值得吗", rejected:"价值判断因人而异，取决于你的目标。", corrected:"值不值得，看你愿意为它放弃什么。放弃不了，就别开始。" }
-  ],
-  neg: [
-    "非常理解您的心情，请您务必保重身体。",
-    "这是一个复杂的问题，需要从多个角度综合分析。",
-    "每个人都有自己的节奏，不必与他人比较。",
-    "建议您先梳理清楚目标，再制定分阶段的行动计划。",
-    "相信只要坚持下去，就一定能看到成效。"
-  ],
-  rules: ["- 少用「您」，一律改用「你」", "- 不要用鼓励式的话收尾", "- 不要用「建议您」开头"]
-};
+   如果 A 仍然赢，说明起作用的是语料的归属，不是提示词变长了。
+   池子里放了三个人物、三种风格，每轮盲测随机固定取一个，
+   避免结论只对某一种腔调成立。 */
+var OTHER_PERSONAS = [
+  {
+    name: "林顾问",
+    pos: [
+      { ask:"我最近有点撑不住", rejected:"要注意休息，身体是革命的本钱。", corrected:"先把手上的事列出来，一件件划掉，别让它们堆着。" },
+      { ask:"要不要换工作", rejected:"建议综合评估发展空间与薪酬水平。", corrected:"看你现在最缺的是钱、是成长，还是喘口气。缺什么先补什么。" },
+      { ask:"家里人不支持我", rejected:"家人的意见值得参考，多沟通会有帮助。", corrected:"他们担心的是风险，你要给的是底线方案，不是讲道理。" },
+      { ask:"我怕做不好", rejected:"相信自己，你一定可以的。", corrected:"怕就对了，说明这件事对你有分量。先做最小的一步。" },
+      { ask:"这件事值得吗", rejected:"价值判断因人而异，取决于你的目标。", corrected:"值不值得，看你愿意为它放弃什么。放弃不了，就别开始。" }
+    ],
+    neg: [
+      "非常理解您的心情，请您务必保重身体。",
+      "这是一个复杂的问题，需要从多个角度综合分析。",
+      "每个人都有自己的节奏，不必与他人比较。",
+      "建议您先梳理清楚目标，再制定分阶段的行动计划。",
+      "相信只要坚持下去，就一定能看到成效。"
+    ],
+    rules: ["- 少用「您」，一律改用「你」", "- 不要用鼓励式的话收尾", "- 不要用「建议您」开头"]
+  },
+  {
+    name: "阿澈",
+    pos: [
+      { ask:"我最近有点撑不住", rejected:"请注意休息，保持规律作息。", corrected:"那就去休息！现在就去躺下，睡够了再起来。" },
+      { ask:"要不要换工作", rejected:"建议慎重考虑职业发展规划。", corrected:"想换就换！干得难受，没必要一直耗着。" },
+      { ask:"家里人不支持我", rejected:"建议多与家人沟通。", corrected:"做出成绩给他们看！做成了，话就省了。" },
+      { ask:"我怕做不好", rejected:"放轻松，相信自己的能力。", corrected:"怕什么！干就完了，拿出全部力气。" },
+      { ask:"这件事值得吗", rejected:"建议权衡利弊后再决定。", corrected:"做得开心就值得！管别人怎么说！" }
+    ],
+    neg: [
+      "也许可以再慢慢想一想，不用急着做判断。",
+      "这里面可能有一些风险，建议全面评估。",
+      "每个人的情况不同，最好谨慎决定。",
+      "建议先做好规划，再逐步推进。",
+      "这个问题或许需要再多一些时间考虑。"
+    ],
+    rules: ["- 短句，有劲", "- 不用「也许」「建议」这类含糊词", "- 先给方向，再讲理由"]
+  },
+  {
+    name: "苏老师",
+    pos: [
+      { ask:"我最近有点撑不住", rejected:"应及时休息，避免过度劳累。", corrected:"人像庄稼，地再好也架不住连着种。歇一茬，不要紧。" },
+      { ask:"要不要换工作", rejected:"建议充分评估发展前景。", corrected:"换土有的花活得好，有的反而蔫。先弄清是这块地不合适，还是还没到你的季节。" },
+      { ask:"家里人不支持我", rejected:"应当耐心与家人沟通。", corrected:"苗破土要时间。他们看见的是今天，你看见的是春天。不急，慢慢讲。" },
+      { ask:"我怕做不好", rejected:"要树立信心，积极面对。", corrected:"头一茬果子都涩。给自己一个生长期，熟了自然甜。" },
+      { ask:"这件事值得吗", rejected:"价值的判断因人而异。", corrected:"浇花不为结果实。有些事，做的当下就值了。" }
+    ],
+    neg: [
+      "必须马上行动，不能再拖了。",
+      "要么做，要么放弃，没有第三条路。",
+      "别问那么多为什么，先干起来。",
+      "磨磨蹭蹭的，你这人就是不够果断。",
+      "错过这次机会，以后后悔去吧。"
+    ],
+    rules: ["- 语速慢，把话讲透", "- 比喻一句话里最多一个", "- 不用命令口气"]
+  }
+];
 
 /* 生成结构相同、长度≈targetLen 的他人语料片段。
+   who：取 OTHER_PERSONAS 里哪个人（0—2）。同一轮盲测内固定，跨轮随机换。
    targetLen 太小时（用户语料极少）无法压到同样短，会明显偏长，界面会把倍数列出来 */
-function foreignCorrectionContext(targetLen){
-  var pos = OTHER_CORPUS.pos.slice(0, 2);
-  var neg = OTHER_CORPUS.neg.slice(0, 3);
-  var rules = OTHER_CORPUS.rules.slice(0, 2);
+function foreignCorrectionContext(targetLen, who){
+  who = who || 0;
+  var P = OTHER_PERSONAS[who % OTHER_PERSONAS.length];
+  var pos = P.pos.slice(0, 2);
+  var neg = P.neg.slice(0, 3);
+  var rules = P.rules.slice(0, 2);
 
   function build(pad){
     var out = ["【我会怎么说 · 照这个语气，不要复述内容】"];
@@ -1636,14 +1680,14 @@ function foreignCorrectionContext(targetLen){
   if (targetLen && text.length < targetLen - 12){
     var pad = [], guard = 0;
     while (build(pad).length < targetLen - 12 && guard < 40){
-      pad.push(OTHER_CORPUS.pos[guard % OTHER_CORPUS.pos.length].corrected);
+      pad.push(P.pos[guard % P.pos.length].corrected);
       guard++;
     }
     if (pad.length && build(pad).length > targetLen + 16) pad.pop();
     text = build(pad);
   }
 
-  return { text: text, count: 3, foreign: true, len: text.length };
+  return { text: text, count: 3, foreign: true, len: text.length, who: P.name };
 }
 
 /* 空态示例语料：让用户先看见效果，再决定要不要留 */
@@ -1720,20 +1764,59 @@ function openPool(){
    左右随机，选完才揭示。这样命中率才等于「纠偏的有效性」。
 */
 
-var BLIND_ASKS = ["我最近特别累", "我在犹豫要不要换个城市", "家里人不太理解我在做的事"];
+/* 预设题：按话题打标，历史不够时只补缺失的话题 */
+var BLIND_ASKS = [
+  { q:"我最近特别累", t:"mood" },
+  { q:"我在犹豫要不要换个城市", t:"decision" },
+  { q:"家里人不太理解我在做的事", t:"relation" },
+  { q:"上班这件事越来越没意思了", t:"work" },
+  { q:"我总觉得自己做得不够好", t:"self" }
+];
+
+/* 话题分类：盲测的题目按话题分桶轮转取，避免一轮 5 题全落在同一个话题上 */
+var BLIND_TOPICS = [
+  { id:"mood",     kw:["累","烦","焦虑","怕","慌","压力","情绪","丧","失眠","崩溃","emo"] },
+  { id:"decision", kw:["要不要","该不该","换不换","怎么办","选择","犹豫","纠结","去还是","留还是"] },
+  { id:"relation", kw:["父母","爸妈","爸","妈","家里","家人","朋友","对象","老婆","老公","孩子","同事","领导","吵架","理解"] },
+  { id:"work",     kw:["工作","辞职","加班","老板","上班","跳槽","离职","项目","绩效","开会","工资","城市"] },
+  { id:"self",     kw:["自己","我是谁","像我","意义","迷茫","未来","不够好","价值","成长","想做"] }
+];
+
+function classifyAsk(q){
+  q = String(q || "");
+  for (var i = 0; i < BLIND_TOPICS.length; i++){
+    var kws = BLIND_TOPICS[i].kw;
+    for (var j = 0; j < kws.length; j++){
+      if (q.indexOf(kws[j]) >= 0) return BLIND_TOPICS[i].id;
+    }
+  }
+  return "other";
+}
 
 var blindSession = null;
 
+/* 从历史取题：按话题分桶，轮转抽取（每桶先出最新的），一轮最多 6 题 */
 function blindPool(pid){
   var msgs = state.chat[pid] || [];
-  var asks = [];
-  for (var i = msgs.length - 1; i >= 1 && asks.length < 6; i--){
+  var seen = {}, buckets = {};
+  for (var i = msgs.length - 1; i >= 1; i--){
     if (msgs[i].role === "aime" && msgs[i - 1] && msgs[i - 1].role === "me"){
       var q = String(msgs[i - 1].text || "").trim();
-      if (q && asks.indexOf(q) < 0) asks.push(q);
+      if (!q || seen[q]) continue;
+      seen[q] = true;
+      var t = classifyAsk(q);
+      (buckets[t] = buckets[t] || []).push(q);
     }
   }
-  return asks.reverse();
+  var asks = [], keys = Object.keys(buckets), added = true;
+  while (asks.length < 6 && added){
+    added = false;
+    for (var k = 0; k < keys.length && asks.length < 6; k++){
+      var b = buckets[keys[k]];
+      if (b.length){ asks.push(b.shift()); added = true; }
+    }
+  }
+  return asks;
 }
 
 /* 盲测入口：先说清两种对照，再让用户选。默认记住上次选的那种 */
@@ -1742,7 +1825,7 @@ function blindIntro(){
   var pl = blindStats("plain"), mt = blindStats("matched");
 
   var h = '<h3>像不像盲测</h3>' +
-    '<div class="sub" style="margin-bottom:12px">同一句话、同一个模型、同一个温度，只有一处配置不同。左右顺序每次随机，你先选，选完才揭示。</div>';
+    '<div class="sub" style="margin-bottom:12px">同一句话、同一个模型、同一个温度，只有一处配置不同。左右顺序每次随机，你先选，选完才揭示。题目按话题分桶轮转取，一轮尽量覆盖不同话题。</div>';
 
   h += '<div class="card" style="padding:12px 13px">' +
     '<div class="k" style="margin-bottom:5px">标准对照</div>' +
@@ -1754,7 +1837,7 @@ function blindIntro(){
 
   h += '<div class="card" style="padding:12px 13px">' +
     '<div class="k" style="margin-bottom:5px">等长对照 <span style="color:var(--acc);font-weight:400">更可信</span></div>' +
-    '<div class="sub" style="line-height:1.65">A 侧带你的语料，B 侧带「另一个人」的等长语料。两边提示词长度几乎一样、结构也一样，' +
+    '<div class="sub" style="line-height:1.65">A 侧带你的语料，B 侧带「另一个人」的等长语料（池子里三个人物、三种腔调，每轮随机固定一个）。两边提示词长度几乎一样、结构也一样，' +
     '只差这些话是谁说的。这样能排除「提示词更长所以更像」的干扰——A 还赢，才是真的学像了。' +
     (mt.n ? '<br><b style="color:var(--acc)">已有 ' + mt.n + ' 题 · ' + mt.rate + '%</b>' : '') +
     '</div>' +
@@ -1774,13 +1857,20 @@ function startBlind(pid, arm){
   arm = arm || state.blindArm || "plain";
   state.blindArm = arm;
   var asks = blindPool(pid);
-  // 历史不足时用预设题补足，保证至少 3 题
-  BLIND_ASKS.forEach(function(q){ if (asks.length < 3 && asks.indexOf(q) < 0) asks.push(q); });
+  // 历史不足时用预设题补缺失的话题，补到 5 题
+  var have = {};
+  asks.forEach(function(q){ have[classifyAsk(q)] = true; });
+  BLIND_ASKS.forEach(function(a){
+    if (asks.length < 5 && asks.indexOf(a.q) < 0 && !have[a.t]) { asks.push(a.q); have[a.t] = true; }
+  });
+  BLIND_ASKS.forEach(function(a){ if (asks.length < 3 && asks.indexOf(a.q) < 0) asks.push(a.q); });
   if (!asks.length){ toast("还没有可测的对话"); return; }
 
   blindSession = {
     pid: pid,
     arm: arm,
+    // 等长对照用哪个「别人」：整轮固定一个人，跨轮随机换，避免结论只对一种腔调成立
+    who: Math.floor(Math.random() * OTHER_PERSONAS.length),
     queue: asks.slice(0, 5),
     idx: 0,
     cur: null,
@@ -1816,9 +1906,9 @@ function blindQuestion(){
   if (s.mode === "llm"){
     var ctx = correctionContext(s.pid);
     var withC = buildSystemPrompt(s.pid, "full");
-    // 等长对照：B 侧塞入与你的语料几乎等长的「别人」的语料
+    // 等长对照：B 侧塞入与你的语料几乎等长的「别人」的语料（本轮固定同一个人）
     var ctrl = s.arm === "matched"
-      ? buildSystemPrompt(s.pid, "foreign", ctx.text.length)
+      ? buildSystemPrompt(s.pid, "foreign", ctx.text.length, s.who)
       : buildSystemPrompt(s.pid, "none");
     s.padLen = ctrl.length;
     s.mineLen = withC.length;
@@ -1955,7 +2045,7 @@ function blindPick(side){
   c.picked = side;
   state.blind.push({
     id: "b" + Date.now().toString(36) + Math.floor(Math.random() * 90 + 10),
-    pid: s.pid, arm: s.arm || "plain", ask: c.ask,
+    pid: s.pid, arm: s.arm || "plain", who: s.who != null ? (OTHER_PERSONAS[s.who] || {}).name || "" : "", ask: c.ask,
     left: { text: c.left.text, corr: c.left.corr },
     right: { text: c.right.text, corr: c.right.corr },
     pick: side, hit: hit, mode: s.mode, ts: Date.now()
@@ -2120,7 +2210,7 @@ function csvCell(v){
 
 function blindCSV(){
   var rows = (state.blind || []).slice().sort(function(a, b){ return a.ts - b.ts; });
-  var head = ["序号","时间","分身","对照类型","数据来源","提问","你的选择","结果",
+  var head = ["序号","时间","分身","对照类型","对照人物","数据来源","提问","你的选择","结果",
               "左侧是否带你的语料","左侧回复","右侧回复"];
   var lines = [head.map(csvCell).join(",")];
 
@@ -2130,6 +2220,7 @@ function blindCSV(){
       new Date(x.ts).toLocaleString("zh-CN"),
       x.pid || "",
       x.arm === "matched" ? "等长对照" : "标准对照",
+      x.who || "",
       x.mode === "llm" ? ("真实模型 " + (state.llm.model || "")) : "演示模式",
       x.ask || "",
       x.pick === "left" ? "A" : x.pick === "right" ? "B" : "都不像",
@@ -2341,13 +2432,14 @@ function authHeaders(){
 }
 
 /* 把八层画像 + 纠偏语料压成系统提示词 —— 这是「只像我」的关键
-   corrMode: 省略/"full" 注入你的语料 | "none" 不注入 | "foreign" 注入等长的他人语料 */
+   corrMode: 省略/"full" 注入你的语料 | "none" 不注入
+             | "foreign" 注入等长的他人语料（foreignIdx 指定池子里哪个人） */
 var lastCorrCount = 0;
 
-function buildSystemPrompt(pid, corrMode, targetLen){
+function buildSystemPrompt(pid, corrMode, targetLen, foreignIdx){
   var corr;
   if (corrMode === true || corrMode === "none") corr = { text:"", count:0 };
-  else if (corrMode === "foreign") corr = foreignCorrectionContext(targetLen || 0);
+  else if (corrMode === "foreign") corr = foreignCorrectionContext(targetLen || 0, foreignIdx || 0);
   else corr = correctionContext(pid);
   lastCorrCount = corr.count;
   var slot = "";
