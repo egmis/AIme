@@ -45,6 +45,7 @@
   .coin-dot{width:13px;height:13px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#FFE0B0,#FFB86B 60%,#C97F2E);box-shadow:0 0 8px rgba(255,184,107,.5)}
   /* 主体 */
   main{flex:1 1 auto;overflow-y:auto;overflow-x:hidden;padding:0 16px 24px;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column}
+  main[data-tab="chat"]{padding-bottom:0}
   main::-webkit-scrollbar{width:0}
   .screen{animation:fade .26s ease both;display:flex;flex-direction:column;min-height:100%}
   @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
@@ -817,13 +818,18 @@ function screenMe(){
 function render(){
   renderTabs();
   renderTop();
+  var view = document.getElementById("view");
+  var keep = view.scrollTop;
+  view.setAttribute("data-tab", state.tab);
   var map = { life:screenLife, forge:screenForge, chat:screenChat, world:screenWorld, me:screenMe };
-  document.getElementById("view").innerHTML = (map[state.tab] || screenLife)();
+  view.innerHTML = (map[state.tab] || screenLife)();
   if (state.tab === "chat"){
     setTimeout(function(){
       var s = document.getElementById("stream");
       if (s) s.scrollTop = s.scrollHeight;
     }, 30);
+  } else {
+    view.scrollTop = keep;
   }
 }
 
