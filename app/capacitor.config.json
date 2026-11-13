@@ -1,0 +1,13 @@
+{
+  "appId": "com.egmis.aime",
+  "appName": "AIme",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "android": {
+    "allowMixedContent": true,
+    "backgroundColor": "#08080C"
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}
