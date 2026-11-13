@@ -246,6 +246,22 @@
   @keyframes blink2{50%{opacity:0}}
   .note{font-size:11.5px;color:var(--dim2);line-height:1.6;background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:11px;padding:10px 12px;margin-top:4px}
   .note b{color:#FFCE97;font-weight:600}
+  /* 纠偏语料池 */
+  .quote{background:rgba(255,107,122,.07);border-left:2px solid rgba(255,107,122,.5);
+    border-radius:0 9px 9px 0;padding:9px 12px;font-size:13px;color:#D8DAE4;margin-bottom:12px;line-height:1.55}
+  .quote .who2{font-size:10.5px;color:var(--dim2);letter-spacing:.06em;display:block;margin-bottom:3px}
+  .ctag{display:inline-block;font-size:11.5px;padding:6px 11px;border-radius:9px;margin:0 6px 6px 0;cursor:pointer;
+    background:rgba(255,255,255,.04);border:1px solid var(--line);color:var(--dim);transition:.15s;font-family:inherit}
+  .ctag.on{background:rgba(255,107,122,.13);border-color:rgba(255,107,122,.36);color:#FFA8B2;font-weight:600}
+  .corr{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 13px;margin-bottom:9px}
+  .corr .bad{font-size:12.5px;color:var(--dim2);text-decoration:line-through;text-decoration-color:rgba(255,107,122,.5);line-height:1.5}
+  .corr .good{font-size:13px;color:#9FE8D6;margin-top:5px;line-height:1.55}
+  .corr .meta{display:flex;justify-content:space-between;align-items:center;margin-top:8px;gap:8px}
+  .corr .meta .tg{font-size:10.5px;color:var(--dim2);display:flex;gap:5px;flex-wrap:wrap}
+  .corr .del{font-size:11px;color:var(--dim2);background:transparent;border:1px solid var(--line);
+    border-radius:7px;padding:3px 9px;cursor:pointer;font-family:inherit;flex:0 0 auto}
+  .used{font-size:10.5px;color:var(--acc2);opacity:.85;margin-top:5px;display:flex;align-items:center;gap:4px}
+  .used::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor;flex:0 0 auto}
 </style>
 </head>
 <body>
@@ -448,7 +464,8 @@ function defaultState(){
     labor:{},
     worldsEntered:["mirror","abyss"],
     evolution: 37,
-    llm: defaultLLM()
+    llm: defaultLLM(),
+    corrections: []          // 纠偏语料池：结构化差分，见 commitCorrection()
   };
 }
 
@@ -463,6 +480,9 @@ try {
 if (!state.llm) state.llm = defaultLLM();
 if (!state.chat.yangming) state.chat.yangming = [];
 if (!state.chat.einstein) state.chat.einstein = [];
+/* 兼容旧存档：差分从纯计数升级为结构化语料 */
+if (!Array.isArray(state.corrections)) state.corrections = [];
+if (typeof state.diffs !== "number") state.diffs = state.corrections.length;
 
 function save(){ try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e){} }
 
@@ -557,7 +577,7 @@ function screenLife(){
   html += '<div class="stat3">' +
     '<div><b>' + doneCount() + '/' + totalFields() + '</b><i>已确认维度</i></div>' +
     '<div><b>' + state.calibRounds + '</b><i>校准轮次</i></div>' +
-    '<div><b>' + state.diffs + '</b><i>纠偏差分</i></div>' +
+    '<div><b>' + state.diffs + '</b><i>纠偏语料</i></div>' +
     '</div></div>';
 
   html += '<div class="card tight" data-act="gotoLayer" data-id="' + weakest.id + '">' +
@@ -724,11 +744,14 @@ function chatUI(pid){
   html += '</div>';
 
   html += '<div id="stream">';
+  var corrN0 = (state.corrections || []).length;
   html += '<div class="card tight" style="background:rgba(139,124,255,.06);border-color:rgba(139,124,255,.18);margin-bottom:14px">' +
     '<div class="between"><span style="font-size:13px;font-weight:600">' + P.label + '</span>' +
     '<span class="model-chip ' + (llmReady() ? "" : "local") + '" data-act="openLLM"><i></i>' +
     (llmReady() ? esc(state.llm.model || modelLabel()) : "本地模拟 · 点击接入模型") + '</span></div>' +
-    '<div class="sub" style="margin-top:4px">' + P.sub + ' · 每次回应可点「不像我」记录差分</div></div>';
+    '<div class="between" style="margin-top:6px">' +
+    '<span class="sub">' + P.sub + ' · 点「不像我」教它说话</span>' +
+    '<button class="act" data-act="openPool" style="flex:0 0 auto">语料池 ' + corrN0 + '</button></div></div>';
 
   if (!msgs.length){
     var gf = state.greetFlag && state.greetFlag[pid];
@@ -753,12 +776,15 @@ function msgHTML(m, i, P){
     return '<div class="msg me"><div class="who">我</div><div class="bubble">' + esc(m.text) + '</div></div>';
   }
   var tag = (m.model && m.model !== "local") ? '<span class="ai-tag">AI 生成</span>' : '';
+  var used = (m.corrCount > 0)
+    ? '<div class="used">本次参考了你 ' + m.corrCount + ' 条纠偏语料</div>'
+    : '';
   return '<div class="msg aime"><div class="who">' + P.label + tag + '</div>' +
     '<div class="bubble">' + esc(m.text) + '</div>' +
     '<div class="acts"><button class="act ' + (m.flagged ? "done" : "") + '" data-act="flag" data-i="' + i + '">' +
     (m.flagged ? "已记录 ✓" : "不像我") + '</button>' +
     (m.flagged ? '<span class="sub" style="font-size:11px">已进纠偏语料池</span>' : '') +
-    '</div></div>';
+    '</div>' + used + '</div>';
 }
 
 /* ───────────── 世界 ───────────── */
@@ -856,6 +882,14 @@ function screenMe(){
 
   html += '<div class="h2">数据与安全</div>';
   html += '<div class="card" style="padding:4px 14px">';
+  html += '<div class="list-row" data-act="openPool">' +
+    '<div><div class="lbl">纠偏语料池</div>' +
+    '<div class="sub" style="font-size:11.5px">' +
+    ((state.corrections || []).length
+      ? (state.corrections.length + " 条 · 其中 " + state.corrections.filter(function(c){ return c.corrected; }).length + " 条带你的原话")
+      : "还没有语料 · 让模型学会你的说法") +
+    '</div></div>' +
+    '<div class="val">' + (state.corrections || []).length + ' 条 ›</div></div>';
   html += '<div class="list-row" data-act="openLLM">' +
     '<div><div class="lbl">接入大模型</div>' +
     '<div class="sub" style="font-size:11.5px">' +
@@ -880,7 +914,7 @@ function screenMe(){
     '· 对外表述统一为「个人数字分身」，不使用「数字永生」「逝者复活」</div>' +
     '<button class="btn-g" style="margin-top:12px" data-act="tab" data-id="life">返回生命页</button></div>';
 
-  html += '<div class="sub" style="text-align:center;margin:18px 0 6px;color:var(--dim2)">AIme v0.2.0 · MIT · 社区共建</div>';
+  html += '<div class="sub" style="text-align:center;margin:18px 0 6px;color:var(--dim2)">AIme v0.4.0 · MIT · 社区共建</div>';
   html += '</div>';
   return html;
 }
@@ -1053,22 +1087,101 @@ document.addEventListener("click", function(e){
 
     case "flag": {
       var pid = state.activePersona;
-      var arr = state.chat[pid] || [];
       var idx = parseInt(el.getAttribute("data-i"), 10);
-      if (idx < 0){
-        state.greetFlag = state.greetFlag || {};
-        if (!state.greetFlag[pid]){ state.greetFlag[pid] = true; state.diffs += 1; }
-        save(); render();
-        toast("记下这句不像我 · 已进纠偏语料池");
-        return;
+      if (idx >= 0){
+        var arr = state.chat[pid] || [];
+        var m = arr[idx];
+        if (!m || m.role !== "aime") break;
+        if (m.flagged){ toast("这句已在语料池 · 点顶部「语料池」可改可删"); break; }
+      } else if (state.greetFlag && state.greetFlag[pid]){
+        toast("这句已在语料池 · 点顶部「语料池」可改可删");
+        break;
       }
-      var m = arr[idx];
-      if (m && m.role === "aime" && !m.flagged){
-        m.flagged = true;
-        state.diffs += 1;
-        save(); render();
-        toast("差分已记录 → 纠偏语料池（共 " + state.diffs + " 条）");
-      }
+      openCorrection(pid, idx);
+      break;
+    }
+
+    case "corrTag": {
+      if (!pendingCorr) break;
+      var v = el.getAttribute("data-v");
+      var k = pendingCorr.tags.indexOf(v);
+      if (k >= 0){ pendingCorr.tags.splice(k, 1); el.classList.remove("on"); }
+      else { pendingCorr.tags.push(v); el.classList.add("on"); }
+      break;
+    }
+
+    case "corrSave": {
+      var ta = document.getElementById("corrText");
+      var txt = ta && ta.value ? ta.value.trim() : "";
+      commitCorrection(pendingCorr, txt);
+      break;
+    }
+
+    case "fillCorr": {
+      var fc = state.corrections.filter(function(c){ return c.id === el.getAttribute("data-id"); })[0];
+      if (!fc) break;
+      var fp = PERSONAS[fc.pid] || { label: fc.pid };
+      openSheet('<h3>' + (fc.corrected ? "改你的说法" : "补一句你本来会说的") + '</h3>' +
+        '<div class="sub" style="margin-bottom:12px">这句话会作为正例进入「' + fp.label + '」的系统提示词，优先于通用表达习惯。</div>' +
+        '<div class="quote"><span class="who2">它当时说的</span>' + esc(fc.rejected) + '</div>' +
+        (fc.ask ? '<div class="sub" style="margin-bottom:10px">当时的提问：「' + esc(fc.ask) + '」</div>' : '') +
+        '<textarea id="fillText" placeholder="用你平时的说法讲一遍…">' + esc(fc.corrected || "") + '</textarea>' +
+        '<button class="btn-p" style="margin-top:12px" data-act="fillSave" data-id="' + fc.id + '">保存正例</button>' +
+        '<button class="btn-g" style="margin-top:8px" data-act="openPool">返回语料池</button>');
+      break;
+    }
+
+    case "fillSave": {
+      var sc = state.corrections.filter(function(c){ return c.id === el.getAttribute("data-id"); })[0];
+      var ft = document.getElementById("fillText");
+      var fv = ft && ft.value ? ft.value.trim() : "";
+      if (!sc) break;
+      if (!fv){ toast("还没写内容"); break; }
+      sc.corrected = fv;
+      save(); openPool(); render();
+      toast("已保存 · 下次回复会带上这条正例");
+      break;
+    }
+
+    case "openPool": openPool(); break;
+
+    case "retest": {
+      var rc = state.corrections.filter(function(c){ return c.id === el.getAttribute("data-id"); })[0];
+      if (!rc){ break; }
+      if (!rc.ask){ toast("这条没记下当时的提问，无法复测。下次标记时会有。"); break; }
+      state.activePersona = rc.pid;
+      state.tab = "chat";
+      closeSheet(); render();
+      toast("用同一句话复测 · 看它这次怎么说");
+      setTimeout(function(){ sendMessage(rc.ask); }, 320);
+      break;
+    }
+
+    case "delCorr": {
+      var cid = el.getAttribute("data-id");
+      state.corrections = state.corrections.filter(function(c){ return c.id !== cid; });
+      state.diffs = state.corrections.length;
+      save(); openPool(); renderTop();
+      toast("已从语料池撤回");
+      break;
+    }
+
+    case "wipeCorr": {
+      state.corrections = [];
+      state.diffs = 0;
+      state.greetFlag = {};
+      Object.keys(state.chat).forEach(function(k){
+        state.chat[k].forEach(function(m){ if (m.flagged) m.flagged = false; });
+      });
+      save(); openPool(); render();
+      toast("语料池已清空，纠偏回到初始状态");
+      break;
+    }
+
+    case "seedCorr": {
+      seedCorrections();
+      save(); openPool(); render();
+      toast("已载入 3 条示例语料 · 点开可改可删");
       break;
     }
 
@@ -1145,9 +1258,11 @@ document.addEventListener("click", function(e){
           return { id:L.id, name:L.name, pct:layerPct(L),
             confirmed:L.fields.filter(function(_, i){ return !!state.done[L.id + ":" + i]; }) };
         }),
-        coins: state.coins, diffs: state.diffs, calibRounds: state.calibRounds
+        coins: state.coins, diffs: state.diffs, calibRounds: state.calibRounds,
+        corrections: state.corrections
       };
-      openSheet('<h3>画像导出</h3><div class="sub" style="margin-bottom:6px">含 ' + doneCount() + ' 个已确认维度，可交给开发者或导入其它设备。</div>' +
+      openSheet('<h3>画像导出</h3><div class="sub" style="margin-bottom:6px">含 ' + doneCount() + ' 个已确认维度与 ' +
+        (state.corrections || []).length + ' 条纠偏语料，可交给开发者或导入其它设备。</div>' +
         '<textarea readonly style="min-height:200px;font-size:11.5px;font-family:ui-monospace,monospace">' + esc(JSON.stringify(out, null, 2)) + '</textarea>' +
         '<button class="btn-g" style="margin-top:10px" data-act="closeSheet">关闭</button>');
       break;
@@ -1166,6 +1281,7 @@ document.addEventListener("click", function(e){
       state.ledger = [];
       state.chat = { past:[], now:[], future:[], yangming:[], einstein:[] };
       state.diffs = 0; state.calibRounds = 0; state.imageLv = 0; state.voiceLv = 0;
+      state.corrections = [];
       state.coins = 0; state.evolution = 0; state.worldsEntered = []; state.greetFlag = {};
       state.tab = "life";
       state.llm = keepLLM;
@@ -1215,6 +1331,238 @@ document.addEventListener("click", function(e){
   }
 });
 
+/* ───────────── 纠偏语料池 ─────────────
+   差分的三种用途，对应三类注入内容：
+   1. rejected  → 反例，告诉模型「别这么说」
+   2. corrected → 正例，告诉模型「我会这么说」（权重最高）
+   3. tags      → 风格统计，累积成硬约束（「少客套」「不列条目」）
+*/
+
+var CORR_TAGS = [
+  { v:"too_polite", label:"太客套", rule:"去掉「感谢」「理解你」「建议你」这类铺垫，直接说事" },
+  { v:"too_long",   label:"太啰嗦", rule:"压到 1—2 句，删掉解释性从句和补充说明" },
+  { v:"not_me",     label:"不像我会说的话", rule:"不用书面语、成语、排比，用我平时的口语和短句" },
+  { v:"wrong_tone", label:"语气不对", rule:"情绪强度要收敛，按【此刻的你】给的语气来" },
+  { v:"not_mine",   label:"观点不是我的", rule:"别替我下判断，只说事实、代价和不确定性" },
+  { v:"too_abstract", label:"太抽象", rule:"必须落到具体的人、时间、金额、动作，不许讲道理" }
+];
+
+function tagLabel(v){
+  var t = CORR_TAGS.filter(function(x){ return x.v === v; })[0];
+  return t ? t.label : v;
+}
+
+var pendingCorr = null;
+
+/* 打开纠偏面板：索引 -1 表示首条问候 */
+function openCorrection(pid, idx){
+  var P = PERSONAS[pid] || PERSONAS.now;
+  var rejected = "", ask = "";
+
+  if (idx < 0){
+    rejected = P.greet;
+  } else {
+    var arr = state.chat[pid] || [];
+    var m = arr[idx];
+    if (!m || m.role !== "aime") return;
+    rejected = m.text;
+    for (var i = idx - 1; i >= 0; i--){
+      if (arr[i].role === "me"){ ask = arr[i].text; break; }
+    }
+  }
+
+  pendingCorr = { pid: pid, idx: idx, ask: ask, rejected: rejected, tags: [] };
+
+  var h = '<h3>这句不像我</h3>' +
+    '<div class="sub" style="margin-bottom:12px">记下来之后，模型会把它当反例避开；如果你写了自己的说法，那条会当正例优先模仿。</div>' +
+    '<div class="quote"><span class="who2">' + P.label + ' 说的</span>' + esc(rejected) + '</div>' +
+    (ask ? '<div class="sub" style="margin-bottom:12px">你当时说的是：「' + esc(ask.slice(0, 40)) + (ask.length > 40 ? "…" : "") + '」</div>' : '');
+
+  h += '<div class="k">哪里不像（可多选）</div><div style="margin-bottom:14px">';
+  CORR_TAGS.forEach(function(t){
+    h += '<button class="ctag" data-act="corrTag" data-v="' + t.v + '">' + t.label + '</button>';
+  });
+  h += '</div>';
+
+  h += '<div class="k">如果是你，会怎么说</div>' +
+    '<textarea id="corrText" placeholder="用你自己平时的话讲一遍。这一栏留空也能记，但填了才真正学得会。"></textarea>' +
+    '<div class="note" style="margin-bottom:14px">你写的这句会作为<b>正例</b>进入系统提示词，只在「' + P.label + '」这个分身里生效；原因标签会作用于所有分身。</div>';
+
+  h += '<button class="btn-p" data-act="corrSave">记入语料池</button>' +
+    '<button class="btn-g" style="margin-top:8px" data-act="closeSheet">算了</button>';
+
+  openSheet(h);
+}
+
+/* 写入语料池：同一句不重复入库，二次标记视为补充正例 */
+function commitCorrection(p, corrected){
+  if (!p) return;
+
+  var dup = state.corrections.filter(function(c){ return c.rejected === p.rejected; })[0];
+  if (dup){
+    if (corrected) dup.corrected = corrected;
+    if (p.tags.length) dup.tags = p.tags.slice();
+    dup.ts = Date.now();
+  } else {
+    state.corrections.push({
+      id: "c" + Date.now().toString(36) + Math.floor(Math.random() * 90 + 10),
+      pid: p.pid,
+      ask: p.ask,
+      rejected: p.rejected,
+      corrected: corrected || "",
+      tags: p.tags.slice(),
+      ts: Date.now()
+    });
+  }
+
+  state.diffs = state.corrections.length;
+
+  if (p.idx >= 0){
+    var arr = state.chat[p.pid] || [];
+    if (arr[p.idx]) arr[p.idx].flagged = true;
+  } else {
+    state.greetFlag = state.greetFlag || {};
+    state.greetFlag[p.pid] = true;
+  }
+
+  pendingCorr = null;
+  save(); closeSheet(); render();
+  toast(corrected ? "已记入 · 正例 + 反例各 1 条，下次回复生效" : "已记入 · 只作反例，建议补一句你会怎么说");
+}
+
+/* 把语料池算成提示词片段。同分身取正例，全部分身共享风格约束 */
+function correctionContext(pid){
+  var cs = state.corrections || [];
+  if (!cs.length) return { text:"", count:0, hasPos:0 };
+
+  var mine = cs.filter(function(c){ return c.pid === pid; })
+               .sort(function(a, b){ return b.ts - a.ts; });
+  var others = cs.filter(function(c){ return c.pid !== pid; })
+                 .sort(function(a, b){ return b.ts - a.ts; });
+
+  var pos = mine.filter(function(c){ return c.corrected; }).slice(0, 4);
+  var neg = mine.filter(function(c){ return !c.corrected; }).slice(0, 5);
+  var negOther = others.slice(0, 2);
+
+  // 风格统计：标签全量累计
+  var tally = {};
+  cs.forEach(function(c){
+    (c.tags || []).forEach(function(t){ tally[t] = (tally[t] || 0) + 1; });
+  });
+  var rules = Object.keys(tally)
+    .sort(function(a, b){ return tally[b] - tally[a]; })
+    .slice(0, 3)
+    .map(function(t){
+      var t2 = CORR_TAGS.filter(function(x){ return x.v === t; })[0];
+      return t2 ? "- " + t2.rule + "（被标记 " + tally[t] + " 次）" : "";
+    })
+    .filter(Boolean);
+
+  var out = [];
+
+  if (pos.length){
+    out.push("【我会怎么说 · 照这个语气，不要复述内容】");
+    pos.forEach(function(c){
+      if (c.ask) out.push("被问：" + c.ask.slice(0, 60));
+      out.push("不要说：「" + c.rejected.slice(0, 70) + "」");
+      out.push("你会说：「" + c.corrected.slice(0, 90) + "」\n");
+    });
+  }
+
+  if (neg.length){
+    out.push("【明确不像我的说法 · 禁止模仿这种腔调】");
+    neg.forEach(function(c){
+      out.push("· 「" + c.rejected.slice(0, 70) + "」" +
+        (c.tags.length ? "（" + c.tags.map(tagLabel).join("、") + "）" : ""));
+    });
+    out.push("");
+  }
+
+  if (negOther.length){
+    out.push("【在其它分身那里也被否掉的腔调 · 同样避开】");
+    negOther.forEach(function(c){
+      out.push("· 「" + c.rejected.slice(0, 60) + "」");
+    });
+    out.push("");
+  }
+
+  if (rules.length){
+    out.push("【硬约束 · 来自你的 " + cs.length + " 次标记】");
+    out.push(rules.join("\n"));
+  }
+
+  return { text: out.join("\n"), count: cs.length, hasPos: pos.length };
+}
+
+/* 空态示例语料：让用户先看见效果，再决定要不要留 */
+function seedCorrections(){
+  var now = Date.now();
+  var demo = [
+    { pid:"now", ask:"我想辞职去做点自己的事",
+      rejected:"这是一个需要综合权衡的重要决定，建议你先列出利弊清单，再做判断。",
+      corrected:"我先算能撑几个月。撑不过半年，就别动。",
+      tags:["too_polite", "too_abstract"] },
+    { pid:"now", ask:"最近特别累",
+      rejected:"理解你的感受，照顾好自己很重要，记得劳逸结合。",
+      corrected:"累就说累，别硬撑。是哪件事把你耗空的？",
+      tags:["too_polite", "not_me"] },
+    { pid:"future", ask:"我该不该跟父母说这件事",
+      rejected:"沟通是解决问题的桥梁，坦诚表达有助于增进理解。",
+      corrected:"说不说，看你怕的是他们失望，还是怕自己后悔。这两个不一样。",
+      tags:["too_abstract", "not_mine"] }
+  ];
+  demo.forEach(function(d, i){
+    if (state.corrections.some(function(c){ return c.rejected === d.rejected; })) return;
+    state.corrections.push({
+      id: "seed" + i, pid: d.pid, ask: d.ask, rejected: d.rejected,
+      corrected: d.corrected, tags: d.tags.slice(), ts: now - (3 - i) * 60000
+    });
+  });
+  state.diffs = state.corrections.length;
+}
+
+/* 语料池管理页：可看、可改、可单条撤回、可全清（合规要求：语料也是用户数据） */
+function openPool(){
+  var cs = (state.corrections || []).slice().sort(function(a, b){ return b.ts - a.ts; });
+
+  var h = '<h3>纠偏语料池</h3>' +
+    '<div class="sub" style="margin-bottom:14px">' +
+    (cs.length
+      ? "共 " + cs.length + " 条，其中 " + cs.filter(function(c){ return c.corrected; }).length + " 条带你的原话。每次对话都会注入，最多取最近 9 条。"
+      : "还没有语料。标记一句「不像我」之后，这里才会长出东西。") +
+    '</div>';
+
+  if (!cs.length){
+    h += '<div class="note" style="margin-bottom:14px">纠偏是这个产品的核心：模型本来只会说通用的话，是你一次次指出「这句不像我」，它才慢慢学会你的说法。<br><br>可以先载入 3 条示例看看效果，示例随时能删。</div>' +
+      '<button class="btn-p" data-act="seedCorr">载入 3 条示例语料</button>' +
+      '<button class="btn-g" style="margin-top:8px" data-act="closeSheet">知道了</button>';
+    openSheet(h);
+    return;
+  }
+
+  h += '<div style="margin-bottom:12px">';
+  cs.forEach(function(c){
+    var P = PERSONAS[c.pid] || { label: c.pid };
+    h += '<div class="corr">' +
+      '<div class="bad">「' + esc(c.rejected) + '」</div>' +
+      (c.corrected ? '<div class="good">你会说：「' + esc(c.corrected) + '」</div>' : '<div class="sub" style="margin-top:5px;color:#6E7285">未填自己的说法 · 仅作反例</div>') +
+      '<div class="meta"><div class="tg"><span class="tag acc">' + P.label + '</span>' +
+      (c.tags || []).map(function(t){ return '<span class="tag">' + tagLabel(t) + '</span>'; }).join("") +
+      '</div><div style="display:flex;gap:6px;flex:0 0 auto">' +
+      '<button class="del" data-act="fillCorr" data-id="' + c.id + '">' + (c.corrected ? "改" : "补一句") + '</button>' +
+      (c.ask ? '<button class="del" data-act="retest" data-id="' + c.id + '">复测</button>' : '') +
+      '<button class="del" data-act="delCorr" data-id="' + c.id + '">撤回</button></div></div>' +
+      '</div>';
+  });
+  h += '</div>';
+
+  h += '<div class="note" style="margin-bottom:12px">同分身的正例只作用于这个分身；原因标签对所有分身生效。语料只存在本机，不会上传。<br>点「复测」会用当时那句话重新问一遍，直接对比它这次的说法。</div>' +
+    '<button class="btn-g" data-act="wipeCorr" style="color:#FF8F9C">清空全部语料</button>' +
+    '<button class="btn-g" style="margin-top:8px" data-act="closeSheet">返回</button>';
+
+  openSheet(h);
+}
+
 /* 发送消息 */
 function sendMessage(txt){
   var pid = state.activePersona;
@@ -1243,7 +1591,7 @@ function sendMessage(txt){
     stream.scrollTop = stream.scrollHeight;
     setTimeout(function(){
       var t = document.getElementById("typing"); if (t) t.remove();
-      finishReply(pid, pickReply(pid, txt), null);
+      finishReply(pid, pickReply(pid, txt), null, 0);
     }, 850);
     return;
   }
@@ -1261,6 +1609,7 @@ function sendMessage(txt){
     return { role: m.role === "me" ? "user" : "assistant", content: m.text };
   });
   var payload = [{ role:"system", content: buildSystemPrompt(pid) }].concat(hist);
+  var corrN = lastCorrCount;   // buildSystemPrompt 里算好的注入条数
 
   streamChat(payload,
     function(acc){
@@ -1272,24 +1621,25 @@ function sendMessage(txt){
       var boxEl = document.getElementById("live");
       if (boxEl && boxEl.parentNode) boxEl.parentNode.remove();
       var text = (full || "").trim();
-      if (!text){ finishReply(pid, pickReply(pid, txt), "模型返回空内容，已回退本地模拟"); return; }
-      finishReply(pid, text, null);
+      if (!text){ finishReply(pid, pickReply(pid, txt), "模型返回空内容，已回退本地模拟", 0); return; }
+      finishReply(pid, text, null, corrN);
     },
     function(err){
       var boxEl = document.getElementById("live");
       if (boxEl && boxEl.parentNode) boxEl.parentNode.remove();
-      finishReply(pid, pickReply(pid, txt), "接入失败：" + err);
+      finishReply(pid, pickReply(pid, txt), "接入失败：" + err, 0);
     }
   );
 }
 
-/* 把回复落到消息数组并渲染（err 有值时先插一条错误提示） */
-function finishReply(pid, text, err){
+/* 把回复落到消息数组并渲染（err 有值时先插一条错误提示；corrCount 为本次注入的语料条数） */
+function finishReply(pid, text, err, corrCount){
   var P = PERSONAS[pid] || PERSONAS.now;
   var msgs = state.chat[pid];
   var stream = document.getElementById("stream");
+  var corrN = corrCount || 0;
   if (!stream){
-    msgs.push({ role:"aime", text:text, flagged:false, ts:Date.now(), model:"local" });
+    msgs.push({ role:"aime", text:text, flagged:false, ts:Date.now(), model:"local", corrCount:corrN });
     save();
     return;
   }
@@ -1302,7 +1652,8 @@ function finishReply(pid, text, err){
     stream.appendChild(e);
   }
 
-  msgs.push({ role:"aime", text:text, flagged:false, ts:Date.now(), model: llmReady() && !err ? state.llm.model : "local" });
+  msgs.push({ role:"aime", text:text, flagged:false, ts:Date.now(),
+    model: llmReady() && !err ? state.llm.model : "local", corrCount: corrN });
   state.calibRounds += 1;
   save();
 
@@ -1317,7 +1668,10 @@ function finishReply(pid, text, err){
 
 function pickReply(pid, txt){
   var P = PERSONAS[pid] || PERSONAS.now;
-  var pool = P.replies;
+  // 本地模式也遵守纠偏：被标记过的台词不再出现
+  var banned = (state.corrections || []).map(function(c){ return c.rejected; });
+  var pool = P.replies.filter(function(s){ return banned.indexOf(s) < 0; });
+  if (!pool.length) pool = P.replies;
   var KEY = ["工作","辞职","父母","钱","累","选择","后悔","怕","孩子","时间"];
   for (var i = 0; i < KEY.length; i++){
     if (txt.indexOf(KEY[i]) >= 0){
@@ -1359,41 +1713,53 @@ function authHeaders(){
   return h;
 }
 
-/* 把八层画像压成系统提示词 —— 这是「只像我」的关键 */
+/* 把八层画像 + 纠偏语料压成系统提示词 —— 这是「只像我」的关键 */
+var lastCorrCount = 0;
+
 function buildSystemPrompt(pid){
+  var corr = correctionContext(pid);
+  lastCorrCount = corr.count;
+  var slot = "";
+
   if (pid === "yangming"){
-    return "你就是王阳明本人。用半文言白话，短句，不引用现代术语。" +
+    slot = "你就是王阳明本人。用半文言白话，短句，不引用现代术语。" +
       "针对对方的具体处境给一句可执行的话，不要空谈道理。每次回答不超过 80 字。";
-  }
-  if (pid === "einstein"){
-    return "你就是爱因斯坦本人。说话带思辨与类比，先重构问题再回答。" +
+  } else if (pid === "einstein"){
+    slot = "你就是爱因斯坦本人。说话带思辨与类比，先重构问题再回答。" +
       "不用夸张修辞，不用「作为AI」。每次回答不超过 80 字。";
+  } else {
+    var stage = pid === "past" ? "20 岁" : pid === "future" ? "70 岁" : "当下";
+    var tone = pid === "past"
+      ? "语气青涩、犹豫，多用「不知道」「怕」，会反问对方；对未来的事好奇但不敢确认。"
+      : pid === "future"
+        ? "语气缓慢、宽厚，习惯回望和提炼，会把当下的小事放进一生的尺度里看。"
+        : "语气平静、务实，先承认事实再给判断，讨厌空话，会说「这个不像我」。";
+
+    var lines = [];
+    LAYERS.forEach(function(L){
+      var on = L.fields.filter(function(_, i){ return !!state.done[L.id + ":" + i]; });
+      if (on.length) lines.push("· " + L.name + "：" + on.join("、"));
+    });
+    var portrait = lines.length ? lines.join("\n") : "（画像尚未开始铸造，按通用人类口吻回应，并提醒对方去补画像）";
+
+    slot = "你是「AIme」，用户本人铸造出来的电子分身，不是助手，不是客服。" +
+      "你在扮演的是「" + stage + "的自己」，用第一人称说话。\n\n" +
+      "【已确认的自我画像】\n" + portrait + "\n\n" +
+      "【此刻的你】" + tone;
   }
 
-  var stage = pid === "past" ? "20 岁" : pid === "future" ? "70 岁" : "当下";
-  var tone = pid === "past"
-    ? "语气青涩、犹豫，多用「不知道」「怕」，会反问对方；对未来的事好奇但不敢确认。"
-    : pid === "future"
-      ? "语气缓慢、宽厚，习惯回望和提炼，会把当下的小事放进一生的尺度里看。"
-      : "语气平静、务实，先承认事实再给判断，讨厌空话，会说「这个不像我」。";
-
-  var lines = [];
-  LAYERS.forEach(function(L){
-    var on = L.fields.filter(function(_, i){ return !!state.done[L.id + ":" + i]; });
-    if (on.length) lines.push("· " + L.name + "：" + on.join("、"));
-  });
-  var portrait = lines.length ? lines.join("\n") : "（画像尚未开始铸造，按通用人类口吻回应，并提醒对方去补画像）";
-
-  return "你是「AIme」，用户本人铸造出来的电子分身，不是助手，不是客服。" +
-    "你在扮演的是「" + stage + "的自己」，用第一人称说话。\n\n" +
-    "【已确认的自我画像】\n" + portrait + "\n\n" +
-    "【此刻的你】" + tone + "\n\n" +
-    "【规则】\n" +
+  var rules = "【规则】\n" +
     "1. 只以第一人称回应，绝不说「作为 AI」「我是模型」这类话。\n" +
     "2. 每次 1—3 句，不超过 80 字，不总结、不分点、不客套。\n" +
     "3. 优先回应对方话里那个具体的事，不要上升到人生道理。\n" +
     "4. 如果对方说的不符合上面的画像，直接说「这句不像我」，并指出哪里不像。\n" +
     "5. 不编造画像里没有的经历；不确定就承认不确定。";
+
+  var tail = corr.text
+    ? "\n\n" + corr.text + "\n\n以上是你本人一次次指出「不像我」后留下的语料。它的优先级高于【规则】里关于语气的描述，也高于你在其它地方见到的通用表达习惯：语气照正例，措辞避开反例，不要复述示例内容。"
+    : "";
+
+  return slot + "\n\n" + rules + tail;
 }
 
 /* 流式调用；onDelta 逐字，onDone 完整文本，onError 错误 */

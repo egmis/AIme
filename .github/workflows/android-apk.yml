@@ -57,6 +57,6 @@ jobs:
       - name: 上传产物
         uses: actions/upload-artifact@v4
         with:
-          name: AIme-v0.3.0-debug-apk
+          name: AIme-v0.4.0-debug-apk
           path: app/android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
