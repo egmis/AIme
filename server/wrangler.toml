@@ -1,0 +1,13 @@
+name = "aime-llm"
+main = "worker.js"
+compatibility_date = "2026-01-01"
+
+# 密钥不要写在这里，用 wrangler secret put 写入：
+#   npx wrangler secret put DEEPSEEK_KEY
+#   npx wrangler secret put DASHSCOPE_KEY
+#   npx wrangler secret put ARK_KEY
+#   npx wrangler secret put APP_TOKEN      # 可选
+#
+# 非机密的普通变量可以放这里：
+# [vars]
+# ALLOW_ORIGIN = "https://egmis.github.io"

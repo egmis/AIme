@@ -225,6 +225,27 @@
     color:var(--txt);font-size:14px;font-family:inherit;outline:none;resize:none;min-height:88px;margin-top:10px}
   textarea:focus{border-color:rgba(139,124,255,.5)}
   .mono{font-variant-numeric:tabular-nums}
+  /* 模型接入 */
+  .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:rgba(255,255,255,.05);padding:4px;border-radius:12px;margin-bottom:14px}
+  .seg button{border:0;background:transparent;color:var(--dim);font-size:12.5px;padding:9px 4px;border-radius:9px;font-family:inherit;cursor:pointer;transition:.16s}
+  .seg button.on{background:rgba(139,124,255,.22);color:#C7BEFF;font-weight:600}
+  .field{margin-bottom:12px}
+  .field label{display:block;font-size:11.5px;color:var(--dim2);margin-bottom:6px;letter-spacing:.05em}
+  .field input{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:11px;padding:11px 13px;color:var(--txt);font-size:13.5px;font-family:inherit;outline:none}
+  .field input:focus{border-color:rgba(139,124,255,.5)}
+  .pick{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:13px}
+  .pick button{padding:8px 13px;border-radius:10px;font-size:12.5px;font-family:inherit;cursor:pointer;
+    background:rgba(255,255,255,.045);border:1px solid var(--line);color:var(--dim);transition:.16s}
+  .pick button.on{background:rgba(63,224,192,.13);border-color:rgba(63,224,192,.34);color:#8DEFD9;font-weight:600}
+  .model-chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:3px 9px;border-radius:7px;
+    background:rgba(139,124,255,.12);border:1px solid rgba(139,124,255,.28);color:#B9AEFF;cursor:pointer}
+  .model-chip.local{background:rgba(255,255,255,.05);border-color:var(--line);color:var(--dim2)}
+  .model-chip i{width:6px;height:6px;border-radius:50%;background:currentColor;flex:0 0 auto}
+  .ai-tag{font-size:9.5px;color:var(--dim2);border:1px solid var(--line);border-radius:5px;padding:1px 5px;margin-left:7px;vertical-align:1px;letter-spacing:.04em}
+  .caret{display:inline-block;width:2px;height:14px;background:var(--acc);vertical-align:-2px;animation:blink2 .9s steps(2) infinite}
+  @keyframes blink2{50%{opacity:0}}
+  .note{font-size:11.5px;color:var(--dim2);line-height:1.6;background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:11px;padding:10px 12px;margin-top:4px}
+  .note b{color:#FFCE97;font-weight:600}
 </style>
 </head>
 <body>
@@ -352,6 +373,43 @@ var PERSONAS = {
     ] }
 };
 
+/* 大模型服务商预设（均为 OpenAI 兼容接口） */
+var PROVIDERS = {
+  deepseek: {
+    name:"DeepSeek", base:"https://api.deepseek.com", model:"deepseek-flash",
+    keyUrl:"https://platform.deepseek.com/api_keys",
+    note:"deepseek-flash 非高峰 $0.15 / $0.60 每百万 token。新账号无免费额度，需先充值；旧的 deepseek-chat 已于 2026 年 7 月停用。"
+  },
+  qwen: {
+    name:"通义千问", base:"https://dashscope.aliyuncs.com/compatible-mode/v1", model:"qwen-plus",
+    keyUrl:"https://bailian.console.aliyun.com",
+    note:"阿里云百炼新用户每模型送 100 万 tokens，90 天有效，须选「华北2（北京）」地域才有额度。"
+  },
+  doubao: {
+    name:"豆包", base:"https://ark.cn-beijing.volces.com/api/v3", model:"doubao-seed-2-0-mini-260215",
+    keyUrl:"https://console.volcengine.com/ark",
+    note:"火山方舟每模型送 50 万 tokens 安心体验额度。若控制台要求接入点，model 填 ep- 开头的接入点 ID，不填模型名。"
+  },
+  custom: {
+    name:"自定义 / WorkBuddy", base:"", model:"",
+    keyUrl:"",
+    note:"任何 OpenAI 兼容网关都行：WorkBuddy 云服务、OneAPI、Ollama、vLLM、自建反代。WorkBuddy 内置大模型免密钥调用仅在其托管环境内有效，独立部署需填自己的网关地址与密钥。"
+  }
+};
+
+function defaultLLM(){
+  return {
+    mode:"local",            // local | proxy | direct
+    provider:"deepseek",
+    baseUrl: PROVIDERS.deepseek.base,
+    model: PROVIDERS.deepseek.model,
+    key:"",
+    proxyUrl:"",
+    proxyToken:"",
+    temp:0.85
+  };
+}
+
 /* ───────────── 状态 ───────────── */
 
 var LS_KEY = "aime.state.v3";
@@ -389,7 +447,8 @@ function defaultState(){
     expanded:"image",
     labor:{},
     worldsEntered:["mirror","abyss"],
-    evolution: 37
+    evolution: 37,
+    llm: defaultLLM()
   };
 }
 
@@ -399,6 +458,11 @@ try {
   state = raw ? JSON.parse(raw) : defaultState();
   if (!state || !state.done) state = defaultState();
 } catch (e){ state = defaultState(); }
+
+/* 兼容旧存档：补上模型配置字段 */
+if (!state.llm) state.llm = defaultLLM();
+if (!state.chat.yangming) state.chat.yangming = [];
+if (!state.chat.einstein) state.chat.einstein = [];
 
 function save(){ try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e){} }
 
@@ -662,7 +726,8 @@ function chatUI(pid){
   html += '<div id="stream">';
   html += '<div class="card tight" style="background:rgba(139,124,255,.06);border-color:rgba(139,124,255,.18);margin-bottom:14px">' +
     '<div class="between"><span style="font-size:13px;font-weight:600">' + P.label + '</span>' +
-    '<span class="tag acc">聊天免费</span></div>' +
+    '<span class="model-chip ' + (llmReady() ? "" : "local") + '" data-act="openLLM"><i></i>' +
+    (llmReady() ? esc(state.llm.model || modelLabel()) : "本地模拟 · 点击接入模型") + '</span></div>' +
     '<div class="sub" style="margin-top:4px">' + P.sub + ' · 每次回应可点「不像我」记录差分</div></div>';
 
   if (!msgs.length){
@@ -687,7 +752,8 @@ function msgHTML(m, i, P){
   if (m.role === "me"){
     return '<div class="msg me"><div class="who">我</div><div class="bubble">' + esc(m.text) + '</div></div>';
   }
-  return '<div class="msg aime"><div class="who">' + P.label + '</div>' +
+  var tag = (m.model && m.model !== "local") ? '<span class="ai-tag">AI 生成</span>' : '';
+  return '<div class="msg aime"><div class="who">' + P.label + tag + '</div>' +
     '<div class="bubble">' + esc(m.text) + '</div>' +
     '<div class="acts"><button class="act ' + (m.flagged ? "done" : "") + '" data-act="flag" data-i="' + i + '">' +
     (m.flagged ? "已记录 ✓" : "不像我") + '</button>' +
@@ -790,6 +856,12 @@ function screenMe(){
 
   html += '<div class="h2">数据与安全</div>';
   html += '<div class="card" style="padding:4px 14px">';
+  html += '<div class="list-row" data-act="openLLM">' +
+    '<div><div class="lbl">接入大模型</div>' +
+    '<div class="sub" style="font-size:11.5px">' +
+    (llmReady() ? "已接入 " + esc(modelLabel()) + " · " + esc(state.llm.model) : "当前本地模拟 · 可接 DeepSeek / 千问 / 豆包") +
+    '</div></div>' +
+    '<div class="val">' + (llmReady() ? "已连接 ›" : "去接入 ›") + '</div></div>';
   html += '<div class="list-row" data-act="toggleStorage">' +
     '<div><div class="lbl">存储位置</div><div class="sub" style="font-size:11.5px">切换后画像需重新加密同步</div></div>' +
     '<div class="val">' + (state.storage === "local" ? "仅本机" : "云端加密") + ' ›</div></div>';
@@ -1089,14 +1161,53 @@ document.addEventListener("click", function(e){
       break;
 
     case "wipeGo":
+      var keepLLM = state.llm;
       state.done = {};
       state.ledger = [];
       state.chat = { past:[], now:[], future:[], yangming:[], einstein:[] };
       state.diffs = 0; state.calibRounds = 0; state.imageLv = 0; state.voiceLv = 0;
       state.coins = 0; state.evolution = 0; state.worldsEntered = []; state.greetFlag = {};
       state.tab = "life";
+      state.llm = keepLLM;
       save(); closeSheet(); render();
       toast("数据已清除，可从零重新铸造");
+      break;
+
+    case "openLLM":
+      openLLM(); break;
+
+    case "llmMode":
+      llmCollect();
+      state.llm.mode = id;
+      save();
+      openLLM();
+      break;
+
+    case "llmProvider": {
+      llmCollect();
+      var prev = PROVIDERS[state.llm.provider] || {};
+      state.llm.provider = id;
+      var np = PROVIDERS[id] || {};
+      if (np.base && (!state.llm.baseUrl || state.llm.baseUrl === prev.base)) state.llm.baseUrl = np.base;
+      if (np.model && (!state.llm.model || state.llm.model === prev.model)) state.llm.model = np.model;
+      save();
+      openLLM();
+      break;
+    }
+
+    case "llmSave":
+      llmCollect();
+      if (llmMode() === "proxy" && !state.llm.proxyUrl){
+        toast("请填代理地址"); return;
+      }
+      if (llmMode() === "direct" && (!state.llm.baseUrl || !state.llm.key)){
+        toast("直连需填 Base URL 与 API Key"); return;
+      }
+      if (!state.llm.model){
+        toast("请填模型名"); return;
+      }
+      save();
+      llmTest();
       break;
 
     case "toastSoon": toast("该名人思想尚未录入，可提交语料包加速"); break;
@@ -1123,30 +1234,85 @@ function sendMessage(txt){
   var inp = document.getElementById("inp");
   if (inp) inp.value = "";
 
-  var ty = document.createElement("div");
-  ty.className = "msg aime";
-  ty.id = "typing";
-  ty.innerHTML = '<div class="who">' + P.label + '</div><div class="typing"><i></i><i></i><i></i></div>';
-  stream.appendChild(ty);
+  if (!llmReady()){
+    // 本地模拟
+    var ty0 = document.createElement("div");
+    ty0.className = "msg aime"; ty0.id = "typing";
+    ty0.innerHTML = '<div class="who">' + P.label + '</div><div class="typing"><i></i><i></i><i></i></div>';
+    stream.appendChild(ty0);
+    stream.scrollTop = stream.scrollHeight;
+    setTimeout(function(){
+      var t = document.getElementById("typing"); if (t) t.remove();
+      finishReply(pid, pickReply(pid, txt), null);
+    }, 850);
+    return;
+  }
+
+  // 真实模型：占位气泡 + 流式填充
+  var box = document.createElement("div");
+  box.className = "msg aime";
+  box.innerHTML = '<div class="who">' + P.label + '<span class="ai-tag">AI 生成</span></div>' +
+    '<div class="bubble" id="live"><span class="typing" style="border:0;padding:0;background:none">' +
+    '<i></i><i></i><i></i></span></div>';
+  stream.appendChild(box);
   stream.scrollTop = stream.scrollHeight;
 
-  setTimeout(function(){
-    var t = document.getElementById("typing");
-    if (t) t.remove();
+  var hist = msgs.slice(-12).map(function(m){
+    return { role: m.role === "me" ? "user" : "assistant", content: m.text };
+  });
+  var payload = [{ role:"system", content: buildSystemPrompt(pid) }].concat(hist);
 
-    var reply = pickReply(pid, txt);
-    msgs.push({ role:"aime", text:reply, flagged:false, ts:Date.now() });
-    state.calibRounds += 1;
-    save();
-
-    var idx = msgs.length - 1;
-    var s2 = document.getElementById("stream");
-    if (s2){
-      s2.insertAdjacentHTML("beforeend", msgHTML(msgs[idx], idx, P));
-      s2.scrollTop = s2.scrollHeight;
+  streamChat(payload,
+    function(acc){
+      var live = document.getElementById("live");
+      if (live) live.textContent = acc;
+      stream.scrollTop = stream.scrollHeight;
+    },
+    function(full){
+      var boxEl = document.getElementById("live");
+      if (boxEl && boxEl.parentNode) boxEl.parentNode.remove();
+      var text = (full || "").trim();
+      if (!text){ finishReply(pid, pickReply(pid, txt), "模型返回空内容，已回退本地模拟"); return; }
+      finishReply(pid, text, null);
+    },
+    function(err){
+      var boxEl = document.getElementById("live");
+      if (boxEl && boxEl.parentNode) boxEl.parentNode.remove();
+      finishReply(pid, pickReply(pid, txt), "接入失败：" + err);
     }
-    renderTop();
-  }, 850);
+  );
+}
+
+/* 把回复落到消息数组并渲染（err 有值时先插一条错误提示） */
+function finishReply(pid, text, err){
+  var P = PERSONAS[pid] || PERSONAS.now;
+  var msgs = state.chat[pid];
+  var stream = document.getElementById("stream");
+  if (!stream){
+    msgs.push({ role:"aime", text:text, flagged:false, ts:Date.now(), model:"local" });
+    save();
+    return;
+  }
+
+  if (err){
+    var e = document.createElement("div");
+    e.className = "msg";
+    e.innerHTML = '<div class="bubble" style="background:rgba(255,107,122,.1);border:1px solid rgba(255,107,122,.28);' +
+      'color:#FFA8B2;font-size:12.5px;max-width:100%;display:block">' + esc(err) + '</div>';
+    stream.appendChild(e);
+  }
+
+  msgs.push({ role:"aime", text:text, flagged:false, ts:Date.now(), model: llmReady() && !err ? state.llm.model : "local" });
+  state.calibRounds += 1;
+  save();
+
+  var idx = msgs.length - 1;
+  var holder = document.createElement("div");
+  holder.innerHTML = msgHTML(msgs[idx], idx, P);
+  var node = holder.firstChild;
+  stream.appendChild(node);
+  stream.scrollTop = stream.scrollHeight;
+  renderTop();
 }
 
 function pickReply(pid, txt){
@@ -1162,7 +1328,143 @@ function pickReply(pid, txt){
   return pool[n % pool.length];
 }
 
-/* 弹层 */
+/* ───────────── 大模型接入 ───────────── */
+
+function llmMode(){ return (state.llm && state.llm.mode) || "local"; }
+function llmReady(){
+  if (llmMode() === "local") return false;
+  if (llmMode() === "proxy") return !!(state.llm.proxyUrl && state.llm.proxyUrl.trim());
+  return !!(state.llm.baseUrl && state.llm.key);
+}
+function modelLabel(){
+  if (llmMode() === "local") return "本地模拟";
+  return (PROVIDERS[state.llm.provider] || PROVIDERS.custom).name;
+}
+function trimSlash(s){ return String(s || "").replace(/\/+$/, ""); }
+
+function endpoint(){
+  if (llmMode() === "proxy"){
+    return trimSlash(state.llm.proxyUrl) + "/" + state.llm.provider + "/chat/completions";
+  }
+  return trimSlash(state.llm.baseUrl) + "/chat/completions";
+}
+
+function authHeaders(){
+  var h = { "Content-Type":"application/json" };
+  if (llmMode() === "proxy"){
+    if (state.llm.proxyToken) h["x-app-token"] = state.llm.proxyToken;
+  } else if (state.llm.key){
+    h["Authorization"] = "Bearer " + state.llm.key;
+  }
+  return h;
+}
+
+/* 把八层画像压成系统提示词 —— 这是「只像我」的关键 */
+function buildSystemPrompt(pid){
+  if (pid === "yangming"){
+    return "你就是王阳明本人。用半文言白话，短句，不引用现代术语。" +
+      "针对对方的具体处境给一句可执行的话，不要空谈道理。每次回答不超过 80 字。";
+  }
+  if (pid === "einstein"){
+    return "你就是爱因斯坦本人。说话带思辨与类比，先重构问题再回答。" +
+      "不用夸张修辞，不用「作为AI」。每次回答不超过 80 字。";
+  }
+
+  var stage = pid === "past" ? "20 岁" : pid === "future" ? "70 岁" : "当下";
+  var tone = pid === "past"
+    ? "语气青涩、犹豫，多用「不知道」「怕」，会反问对方；对未来的事好奇但不敢确认。"
+    : pid === "future"
+      ? "语气缓慢、宽厚，习惯回望和提炼，会把当下的小事放进一生的尺度里看。"
+      : "语气平静、务实，先承认事实再给判断，讨厌空话，会说「这个不像我」。";
+
+  var lines = [];
+  LAYERS.forEach(function(L){
+    var on = L.fields.filter(function(_, i){ return !!state.done[L.id + ":" + i]; });
+    if (on.length) lines.push("· " + L.name + "：" + on.join("、"));
+  });
+  var portrait = lines.length ? lines.join("\n") : "（画像尚未开始铸造，按通用人类口吻回应，并提醒对方去补画像）";
+
+  return "你是「AIme」，用户本人铸造出来的电子分身，不是助手，不是客服。" +
+    "你在扮演的是「" + stage + "的自己」，用第一人称说话。\n\n" +
+    "【已确认的自我画像】\n" + portrait + "\n\n" +
+    "【此刻的你】" + tone + "\n\n" +
+    "【规则】\n" +
+    "1. 只以第一人称回应，绝不说「作为 AI」「我是模型」这类话。\n" +
+    "2. 每次 1—3 句，不超过 80 字，不总结、不分点、不客套。\n" +
+    "3. 优先回应对方话里那个具体的事，不要上升到人生道理。\n" +
+    "4. 如果对方说的不符合上面的画像，直接说「这句不像我」，并指出哪里不像。\n" +
+    "5. 不编造画像里没有的经历；不确定就承认不确定。";
+}
+
+/* 流式调用；onDelta 逐字，onDone 完整文本，onError 错误 */
+function streamChat(messages, onDelta, onDone, onError){
+  var body = {
+    model: state.llm.model,
+    messages: messages,
+    temperature: typeof state.llm.temp === "number" ? state.llm.temp : 0.85,
+    stream: true,
+    max_tokens: 600
+  };
+  var ctrl = (typeof AbortController !== "undefined") ? new AbortController() : null;
+  var timer = setTimeout(function(){ if (ctrl) ctrl.abort(); }, 45000);
+
+  fetch(endpoint(), {
+    method:"POST",
+    headers: authHeaders(),
+    body: JSON.stringify(body),
+    signal: ctrl ? ctrl.signal : undefined
+  }).then(function(resp){
+    if (!resp.ok){
+      return resp.text().then(function(t){
+        var msg = t.slice(0, 200);
+        try { msg = (JSON.parse(t).error || {}).message || msg; } catch (e){}
+        throw new Error("HTTP " + resp.status + "：" + msg);
+      });
+    }
+    if (!resp.body || !resp.body.getReader){
+      return resp.json().then(function(j){
+        var txt = (((j.choices || [])[0] || {}).message || {}).content || "";
+        onDelta(txt); onDone(txt);
+      });
+    }
+
+    var reader = resp.body.getReader();
+    var dec = new TextDecoder("utf-8");
+    var buf = "", acc = "";
+    function pump(){
+      return reader.read().then(function(r){
+        if (r.done){ onDone(acc); return; }
+        buf += dec.decode(r.value, { stream:true });
+        var lines = buf.split("\n");
+        buf = lines.pop();
+        for (var i = 0; i < lines.length; i++){
+          var line = lines[i].trim();
+          if (!line || line.indexOf("data:") !== 0) continue;
+          var payload = line.slice(5).trim();
+          if (payload === "[DONE]"){ onDone(acc); return; }
+          try {
+            var j = JSON.parse(payload);
+            var d = (((j.choices || [])[0] || {}).delta || {}).content || "";
+            if (d){ acc += d; onDelta(acc); }
+          } catch (e){}
+        }
+        return pump();
+      });
+    }
+    return pump();
+  }).then(function(){ clearTimeout(timer); })
+    .catch(function(err){
+      clearTimeout(timer);
+      var m = err && err.message ? err.message : String(err);
+      if (/abort/i.test(m)) m = "请求超时（45 秒）";
+      if (/Failed to fetch|NetworkError|Load failed/i.test(m)){
+        m = "网络或跨域被拦截（CORS）。浏览器直连多数服务商会失败，请改用「代理模式」";
+      }
+      onError(m);
+    });
+}
+
+/* ───────────── 弹层 ───────────── */
 function openSheet(inner){
   document.getElementById("sheetBody").innerHTML =
     '<div class="grab"></div><button class="close" data-act="closeSheet">✕</button>' + inner;
@@ -1170,6 +1472,110 @@ function openSheet(inner){
 }
 function closeSheet(){
   document.getElementById("sheet").classList.remove("open");
+}
+
+/* ───────── 模型接入面板 ───────── */
+
+function llmErrMsg(t){
+  var m = String(t || "").slice(0, 200);
+  try { m = (JSON.parse(t).error || {}).message || m; } catch (e){}
+  return m;
+}
+
+function llmTest(){
+  openSheet('<h3>测试连接</h3><div class="sub">正在请求 ' + esc(state.llm.model || "模型") + ' …</div>' +
+    '<div class="typing" style="margin-top:12px"><i></i><i></i><i></i></div>');
+  var t0 = Date.now();
+  fetch(endpoint(), {
+    method:"POST",
+    headers: authHeaders(),
+    body: JSON.stringify({
+      model: state.llm.model,
+      messages: [{ role:"user", content:"回复两个字：在线" }],
+      max_tokens: 12,
+      stream: false
+    })
+  }).then(function(r){
+    return r.text().then(function(t){ return { ok:r.ok, status:r.status, t:t }; });
+  }).then(function(res){
+    if (!res.ok) throw new Error("HTTP " + res.status + "：" + llmErrMsg(res.t));
+    var ms = Date.now() - t0;
+    openSheet('<h3 style="color:#8DEFD9">连接成功</h3>' +
+      '<div class="sub" style="margin:6px 0 12px">' + esc(state.llm.model) + ' · 延迟 ' + ms + ' ms · 配置已存在本机</div>' +
+      '<div class="note">去对话页发一句话试试 —— 模型会拿到你已确认的画像作为人格设定。</div>' +
+      '<button class="btn-p" style="margin-top:12px" data-act="closeSheet">开始对话</button>');
+  }).catch(function(e){
+    var m = e && e.message ? e.message : String(e);
+    if (/Failed to fetch|NetworkError|Load failed/i.test(m)){
+      m = "跨域被拦截或地址不可达。浏览器直连多数服务商会被拦，请改用「代理」模式。";
+    }
+    openSheet('<h3 style="color:#FF8F9C">连接失败</h3>' +
+      '<div class="sub" style="margin:6px 0 10px;word-break:break-word">' + esc(m) + '</div>' +
+      '<div class="note">常见原因：密钥错误（401）、余额或额度用尽（402/429）、模型名不存在（404）、' +
+      '豆包未填接入点 ID、浏览器跨域（CORS）。排查见仓库 <code>docs/05-模型接入.md</code>。</div>' +
+      '<button class="btn-g" style="margin-top:12px" data-act="openLLM">返回修改</button>');
+  });
+}
+
+function llmCollect(){
+  var g = function(id){ var e = document.getElementById(id); return e ? e.value : null; };
+  var v;
+  if ((v = g("llmBase")) !== null) state.llm.baseUrl = v.trim();
+  if ((v = g("llmModel")) !== null) state.llm.model = v.trim();
+  if ((v = g("llmKey")) !== null) state.llm.key = v.trim();
+  if ((v = g("llmProxy")) !== null) state.llm.proxyUrl = v.trim();
+  if ((v = g("llmProxyToken")) !== null) state.llm.proxyToken = v.trim();
+}
+
+function openLLM(){
+  var L = state.llm;
+  var P = PROVIDERS[L.provider] || PROVIDERS.custom;
+
+  var h = '<h3>接入大模型</h3>' +
+    '<div class="sub" style="margin:4px 0 14px">接上真实模型后，对话会自动带上你已确认的画像作为人格设定，' +
+    '不再是预设台词。</div>';
+
+  h += '<div class="seg">' +
+    [["local","本地模拟"],["proxy","代理"],["direct","直连"]].map(function(x){
+      return '<button class="' + (L.mode === x[0] ? "on" : "") + '" data-act="llmMode" data-id="' + x[0] + '">' + x[1] + '</button>';
+    }).join("") + '</div>';
+
+  if (L.mode === "local"){
+    h += '<div class="note">本地模拟不联网、不需要密钥，回复来自内置人格台词库。适合离线演示，但没有真实理解能力。<br><br>' +
+      '<b>想让它真的听懂你</b>，用「代理」模式：几十行代码的 Cloudflare Worker 托管密钥，' +
+      '部署指南见仓库 <code>server/README.md</code>。</div>' +
+      '<button class="btn-g" style="margin-top:12px" data-act="closeSheet">好</button>';
+    return openSheet(h);
+  }
+
+  h += '<div class="k" style="margin-bottom:8px">服务商</div><div class="pick">' +
+    Object.keys(PROVIDERS).map(function(k){
+      return '<button class="' + (L.provider === k ? "on" : "") + '" data-act="llmProvider" data-id="' + k + '">' +
+        PROVIDERS[k].name + '</button>';
+    }).join("") + '</div>';
+
+  if (L.mode === "direct"){
+    h += '<div class="field"><label>Base URL</label><input id="llmBase" value="' + esc(L.baseUrl) + '" placeholder="https://api.deepseek.com"></div>';
+    h += '<div class="field"><label>模型名</label><input id="llmModel" value="' + esc(L.model) + '" placeholder="deepseek-flash"></div>';
+    h += '<div class="field"><label>API Key（只存在本机）</label><input id="llmKey" type="password" value="' + esc(L.key) + '" placeholder="sk-…"></div>';
+  } else {
+    h += '<div class="field"><label>代理地址（Worker 根地址）</label><input id="llmProxy" value="' + esc(L.proxyUrl) + '" placeholder="https://aime-llm.你的账号.workers.dev"></div>';
+    h += '<div class="field"><label>访问令牌（Worker 里设的 APP_TOKEN，可留空）</label><input id="llmProxyToken" type="password" value="' + esc(L.proxyToken) + '" placeholder="可选"></div>';
+    h += '<div class="field"><label>模型名</label><input id="llmModel" value="' + esc(L.model) + '" placeholder="deepseek-flash"></div>';
+  }
+
+  if (P.note) h += '<div class="note">' + P.note + '</div>';
+  if (P.keyUrl) h += '<div class="note" style="margin-top:8px">申请密钥：<span style="color:#B9AEFF;word-break:break-all">' + P.keyUrl + '</span></div>';
+
+  if (L.mode === "direct"){
+    h += '<div class="note" style="margin-top:8px;border-color:rgba(255,107,122,.25)">' +
+      '<b>直连大概率失败</b>：多数服务商不给浏览器跨域（CORS）权限，且密钥会暴露在前端代码里。' +
+      '仅建议在个人设备上临时试用。</div>';
+  }
+
+  h += '<button class="btn-p" style="margin-top:14px" data-act="llmSave">保存并测试连接</button>' +
+    '<button class="btn-g" style="margin-top:8px" data-act="closeSheet">取消</button>';
+  openSheet(h);
 }
 
 document.addEventListener("keydown", function(e){
